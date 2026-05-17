@@ -4,15 +4,47 @@
 -- bcrypt hash for "password123" (cost 10):
 --   $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 
-USE campus_facility_booking;
-
-INSERT INTO facilities (name, category, location, capacity, description) VALUES
- ('Aula Kampus','Aula','Gedung Utama Lt.1',300,'Aula utama untuk acara besar'),
- ('Ruang Seminar','Ruangan','Gedung A Lt.2',100,'Ruang seminar dengan AC dan proyektor'),
- ('Laboratorium Komputer','Laboratorium','Gedung B Lt.3',40,'Lab dengan 40 PC'),
- ('Lapangan','Outdoor','Area Belakang Kampus',500,'Lapangan terbuka untuk kegiatan outdoor'),
- ('Ruang Rapat','Ruangan','Gedung Rektorat Lt.2',30,'Ruang rapat eksekutif'),
- ('Auditorium','Aula','Gedung Utama Lt.3',500,'Auditorium besar berkapasitas 500');
+INSERT INTO facilities (name, category, managingUnit, location, capacity, description) VALUES
+ -- BIRO I
+ ('Ruang Kelas Biasa','Ruang Kelas','BIRO_I','Gedung Akademik',40,'Ruang kelas standar untuk perkuliahan reguler'),
+ ('Ruang Hybrid','Ruang Kelas','BIRO_I','Gedung Akademik',40,'Ruang kelas dengan dukungan kuliah hybrid'),
+ ('Ruang Tutorial','Ruang Tutorial','BIRO_I','Gedung Akademik',25,'Ruang tutorial untuk sesi pembelajaran kelompok kecil'),
+ -- BIRO IV
+ ('Ruang H.1.1','Ruangan','BIRO_IV','Gedung H Lt.1',60,'Ruang serbaguna'),
+ ('Studio Podcast','Studio','BIRO_IV','Gedung Biro IV',6,'Fasilitas podcast lengkap untuk produksi audio'),
+ ('Kamera Foto','Peralatan','BIRO_IV','Inventaris Biro IV',NULL,'Kamera DSLR untuk dokumentasi acara'),
+ ('Kamera Streaming','Peralatan','BIRO_IV','Inventaris Biro IV',NULL,'Kamera streaming untuk siaran live'),
+ ('Perlengkapan Mikrofon (Biro IV)','Peralatan','BIRO_IV','Inventaris Biro IV',NULL,'Set mikrofon untuk kegiatan dokumentasi'),
+ ('Flash Memory','Peralatan','BIRO_IV','Inventaris Biro IV',NULL,'Media penyimpanan untuk transfer data acara'),
+ -- PPLK
+ ('Proyektor','Peralatan','PPLK','Inventaris PPLK',NULL,'Proyektor untuk presentasi dan kegiatan'),
+ ('Laptop (Peminjaman Khusus)','Peralatan','PPLK','Inventaris PPLK',NULL,'Laptop dengan syarat peminjaman khusus'),
+ ('Kabel HDMI','Peralatan','PPLK','Inventaris PPLK',NULL,'Kabel HDMI untuk koneksi proyektor/display'),
+ ('Speaker Aktif','Peralatan','PPLK','Inventaris PPLK',NULL,'Speaker aktif portabel'),
+ ('Soundcard','Peralatan','PPLK','Inventaris PPLK',NULL,'Soundcard untuk produksi audio'),
+ ('Mikrofon (PPLK)','Peralatan','PPLK','Inventaris PPLK',NULL,'Mikrofon untuk kegiatan unit/lintas unit'),
+ ('Laboratorium Komputer Lantai 2','Laboratorium','PPLK','Gedung Lab Lt.2',40,'Lab komputer utama'),
+ ('Lab Komputer A','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer A'),
+ ('Lab Komputer B','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer B'),
+ ('Lab Komputer C','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer C'),
+ ('Lab Komputer D','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer D'),
+ ('Lab Komputer E','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer E'),
+ ('Lab Komputer F','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer F'),
+ ('Lab Komputer G','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer G'),
+ ('Lab Komputer H','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer H'),
+ ('Lab Komputer I','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer I'),
+ -- KRT
+ ('Auditorium Koinonia','Auditorium','KRT','Gedung Koinonia',500,'Auditorium utama kampus'),
+ ('Ruang Rudi Budiman','Ruangan','KRT','Gedung Utama',80,'Ruangan serbaguna Rudi Budiman'),
+ ('Ruang Harun','Ruangan','KRT','Gedung Utama',80,'Ruangan serbaguna Harun'),
+ ('Kendaraan','Kendaraan','KRT','Pool Kendaraan KRT',NULL,'Kendaraan operasional kampus'),
+ ('Sound System','Peralatan','KRT','Inventaris KRT',NULL,'Sound system untuk acara besar'),
+ ('Layar Viewer Proyektor','Peralatan','KRT','Inventaris KRT',NULL,'Layar untuk proyektor'),
+ -- LPAIP
+ ('Kamera (LPAIP)','Peralatan','LPAIP','Inventaris LPAIP',NULL,'Kamera dokumentasi multimedia'),
+ ('Stabilizer Kamera','Peralatan','LPAIP','Inventaris LPAIP',NULL,'Gimbal/stabilizer untuk video shooting'),
+ ('Tripod','Peralatan','LPAIP','Inventaris LPAIP',NULL,'Tripod kamera untuk shooting stabil'),
+ ('Saramonic','Peralatan','LPAIP','Inventaris LPAIP',NULL,'Mikrofon Saramonic untuk recording audio');
 
 INSERT INTO users (name, email, password, role, organizationName, phone, identityNumber) VALUES
  ('Pengurus Demo','pengurus@kampus.test','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','PENGURUS','BEM Universitas','081234567890','2021001'),

@@ -8,7 +8,9 @@ import {
   updateRevisionRequest,
   type RequestFormState,
 } from '@/app/actions/requests';
-import type { Facility, FacilityRequest } from '@/types';
+import { MANAGING_UNIT_LABEL, type Facility, type FacilityRequest, type ManagingUnit } from '@/types';
+
+const UNIT_ORDER: ManagingUnit[] = ['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'];
 
 type Props = {
   facilities: Facility[];
@@ -43,12 +45,20 @@ export function RequestForm({ facilities, mode, initial }: Props) {
           <Field label="Fasilitas" error={errs.facilityId} required>
             <Select name="facilityId" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} required>
               <option value="">-- Pilih fasilitas --</option>
-              {facilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} — {f.category}
-                  {f.capacity ? ` (kap. ${f.capacity})` : ''}
-                </option>
-              ))}
+              {UNIT_ORDER.map((unit) => {
+                const items = facilities.filter((f) => f.managingUnit === unit);
+                if (items.length === 0) return null;
+                return (
+                  <optgroup key={unit} label={MANAGING_UNIT_LABEL[unit]}>
+                    {items.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name} — {f.category}
+                        {f.capacity ? ` (kap. ${f.capacity})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </Select>
           </Field>
           <Field label="Nama Kegiatan" error={errs.activityName} required>

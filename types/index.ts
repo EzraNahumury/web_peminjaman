@@ -46,10 +46,29 @@ export interface User {
   updatedAt: Date;
 }
 
+export type ManagingUnit = 'BIRO_I' | 'BIRO_IV' | 'PPLK' | 'KRT' | 'LPAIP';
+
+export const MANAGING_UNIT_LABEL: Record<ManagingUnit, string> = {
+  BIRO_I: 'Biro I',
+  BIRO_IV: 'Biro IV',
+  PPLK: 'PPLK',
+  KRT: 'KRT / Kerumahtanggaan',
+  LPAIP: 'LPAIP',
+};
+
+export const MANAGING_UNIT_DESC: Record<ManagingUnit, string> = {
+  BIRO_I: 'Ruang Pembelajaran',
+  BIRO_IV: 'Ruangan & Peralatan Pendukung',
+  PPLK: 'Peralatan Pembelajaran & Lab',
+  KRT: 'Ruangan, Kendaraan & Perlengkapan Acara',
+  LPAIP: 'Dokumentasi & Multimedia',
+};
+
 export interface Facility {
   id: number;
   name: string;
   category: string;
+  managingUnit: ManagingUnit;
   location: string | null;
   capacity: number | null;
   description: string | null;

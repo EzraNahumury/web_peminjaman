@@ -2,6 +2,62 @@ import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import mysql from 'mysql2/promise';
 
+type FacilityRow = [
+  name: string,
+  category: string,
+  managingUnit: 'BIRO_I' | 'BIRO_IV' | 'PPLK' | 'KRT' | 'LPAIP',
+  location: string | null,
+  capacity: number | null,
+  description: string | null
+];
+
+const FACILITIES: FacilityRow[] = [
+  // BIRO I — Ruang Pembelajaran
+  ['Ruang Kelas Biasa', 'Ruang Kelas', 'BIRO_I', 'Gedung Akademik', 40, 'Ruang kelas standar untuk perkuliahan reguler'],
+  ['Ruang Hybrid', 'Ruang Kelas', 'BIRO_I', 'Gedung Akademik', 40, 'Ruang kelas dengan dukungan kuliah hybrid (online + offline)'],
+  ['Ruang Tutorial', 'Ruang Tutorial', 'BIRO_I', 'Gedung Akademik', 25, 'Ruang tutorial untuk sesi pembelajaran kelompok kecil'],
+
+  // BIRO IV — Ruangan & Peralatan Pendukung
+  ['Ruang H.1.1', 'Ruangan', 'BIRO_IV', 'Gedung H Lt.1', 60, 'Ruang serbaguna'],
+  ['Studio Podcast', 'Studio', 'BIRO_IV', 'Gedung Biro IV', 6, 'Fasilitas podcast lengkap untuk produksi audio'],
+  ['Kamera Foto', 'Peralatan', 'BIRO_IV', 'Inventaris Biro IV', null, 'Kamera DSLR untuk dokumentasi acara'],
+  ['Kamera Streaming', 'Peralatan', 'BIRO_IV', 'Inventaris Biro IV', null, 'Kamera streaming untuk siaran live'],
+  ['Perlengkapan Mikrofon (Biro IV)', 'Peralatan', 'BIRO_IV', 'Inventaris Biro IV', null, 'Set mikrofon untuk kegiatan dokumentasi'],
+  ['Flash Memory', 'Peralatan', 'BIRO_IV', 'Inventaris Biro IV', null, 'Media penyimpanan untuk transfer data acara'],
+
+  // PPLK — Peralatan Pembelajaran/Teknis
+  ['Proyektor', 'Peralatan', 'PPLK', 'Inventaris PPLK', null, 'Proyektor untuk presentasi dan kegiatan'],
+  ['Laptop (Peminjaman Khusus)', 'Peralatan', 'PPLK', 'Inventaris PPLK', null, 'Laptop dengan syarat peminjaman khusus'],
+  ['Kabel HDMI', 'Peralatan', 'PPLK', 'Inventaris PPLK', null, 'Kabel HDMI untuk koneksi proyektor/display'],
+  ['Speaker Aktif', 'Peralatan', 'PPLK', 'Inventaris PPLK', null, 'Speaker aktif portabel'],
+  ['Soundcard', 'Peralatan', 'PPLK', 'Inventaris PPLK', null, 'Soundcard untuk produksi audio'],
+  ['Mikrofon (PPLK)', 'Peralatan', 'PPLK', 'Inventaris PPLK', null, 'Mikrofon untuk kegiatan unit/lintas unit'],
+  ['Laboratorium Komputer Lantai 2', 'Laboratorium', 'PPLK', 'Gedung Lab Lt.2', 40, 'Lab komputer utama'],
+  ['Lab Komputer A', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer A'],
+  ['Lab Komputer B', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer B'],
+  ['Lab Komputer C', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer C'],
+  ['Lab Komputer D', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer D'],
+  ['Lab Komputer E', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer E'],
+  ['Lab Komputer F', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer F'],
+  ['Lab Komputer G', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer G'],
+  ['Lab Komputer H', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer H'],
+  ['Lab Komputer I', 'Laboratorium', 'PPLK', 'Gedung Lab', 30, 'Lab komputer I'],
+
+  // KRT — Kerumahtanggaan
+  ['Auditorium Koinonia', 'Auditorium', 'KRT', 'Gedung Koinonia', 500, 'Auditorium utama kampus'],
+  ['Ruang Rudi Budiman', 'Ruangan', 'KRT', 'Gedung Utama', 80, 'Ruangan serbaguna Rudi Budiman'],
+  ['Ruang Harun', 'Ruangan', 'KRT', 'Gedung Utama', 80, 'Ruangan serbaguna Harun'],
+  ['Kendaraan', 'Kendaraan', 'KRT', 'Pool Kendaraan KRT', null, 'Kendaraan operasional kampus'],
+  ['Sound System', 'Peralatan', 'KRT', 'Inventaris KRT', null, 'Sound system untuk acara besar'],
+  ['Layar Viewer Proyektor', 'Peralatan', 'KRT', 'Inventaris KRT', null, 'Layar untuk proyektor'],
+
+  // LPAIP — Dokumentasi & Multimedia
+  ['Kamera (LPAIP)', 'Peralatan', 'LPAIP', 'Inventaris LPAIP', null, 'Kamera dokumentasi multimedia'],
+  ['Stabilizer Kamera', 'Peralatan', 'LPAIP', 'Inventaris LPAIP', null, 'Gimbal/stabilizer untuk video shooting'],
+  ['Tripod', 'Peralatan', 'LPAIP', 'Inventaris LPAIP', null, 'Tripod kamera untuk shooting stabil'],
+  ['Saramonic', 'Peralatan', 'LPAIP', 'Inventaris LPAIP', null, 'Mikrofon Saramonic untuk recording audio'],
+];
+
 async function main() {
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
@@ -21,15 +77,12 @@ async function main() {
   await conn.query('DELETE FROM users');
   await conn.query('DELETE FROM facilities');
 
-  await conn.query(
-    `INSERT INTO facilities (name, category, location, capacity, description) VALUES
-     ('Aula Kampus','Aula','Gedung Utama Lt.1',300,'Aula utama untuk acara besar'),
-     ('Ruang Seminar','Ruangan','Gedung A Lt.2',100,'Ruang seminar dengan AC dan proyektor'),
-     ('Laboratorium Komputer','Laboratorium','Gedung B Lt.3',40,'Lab dengan 40 PC'),
-     ('Lapangan','Outdoor','Area Belakang Kampus',500,'Lapangan terbuka untuk kegiatan outdoor'),
-     ('Ruang Rapat','Ruangan','Gedung Rektorat Lt.2',30,'Ruang rapat eksekutif'),
-     ('Auditorium','Aula','Gedung Utama Lt.3',500,'Auditorium besar berkapasitas 500');`
-  );
+  for (const [name, category, unit, location, capacity, description] of FACILITIES) {
+    await conn.execute(
+      'INSERT INTO facilities (name, category, managingUnit, location, capacity, description) VALUES (?,?,?,?,?,?)',
+      [name, category, unit, location, capacity, description]
+    );
+  }
 
   const users: [string, string, string, string | null, string, string | null][] = [
     ['Pengurus Demo', 'pengurus@kampus.test', 'PENGURUS', 'BEM Universitas', '081234567890', '2021001'],
@@ -46,7 +99,8 @@ async function main() {
     );
   }
 
-  console.log('Seed selesai. Login dengan password: password123');
+  console.log(`Seed selesai. ${FACILITIES.length} fasilitas, ${users.length} user.`);
+  console.log('Login dengan password: password123');
   await conn.end();
 }
 
