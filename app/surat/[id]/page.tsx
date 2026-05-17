@@ -72,24 +72,30 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="surat-paper">
-        <header style={{ borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 24 }}>
-          {req.pengurusLogoUrl && (
-            <img
-              src={req.pengurusLogoUrl}
-              alt="Logo Organisasi"
-              style={{ width: 70, height: 70, objectFit: 'contain' }}
-            />
-          )}
+        <header style={{ borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <img
+            src="/ukdw.png"
+            alt="Logo UKDW"
+            style={{ width: 80, height: 80, objectFit: 'contain', flexShrink: 0 }}
+          />
           <div style={{ flex: 1, textAlign: 'center' }}>
             <p style={{ fontSize: '14pt', fontWeight: 700, letterSpacing: 1, margin: 0 }}>
-              {req.pengurusOrg || 'BADAN PERWAKILAN MAHASISWA'}
+              {(req.pengurusOrg || 'BADAN PERWAKILAN MAHASISWA').toUpperCase()}
             </p>
             <p style={{ fontSize: '13pt', fontWeight: 700, margin: '4px 0 0' }}>UNIVERSITAS KRISTEN DUTA WACANA</p>
             <p style={{ fontSize: '10pt', margin: '6px 0 0' }}>Jl. Dr. Wahidin Sudirohusodo No. 5-24 Yogyakarta 55224</p>
             <p style={{ fontSize: '10pt', margin: '2px 0 0' }}>Sekretariat: Gedung Bundar Atrium Didaktos</p>
             <p style={{ fontSize: '10pt', margin: '2px 0 0' }}>Email: bpm.ukdw@students.ukdw.ac.id</p>
           </div>
-          {req.pengurusLogoUrl && <div style={{ width: 70 }} />}
+          <div style={{ width: 80, height: 80, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {req.pengurusLogoUrl ? (
+              <img
+                src={req.pengurusLogoUrl}
+                alt="Logo Organisasi"
+                style={{ maxWidth: 80, maxHeight: 80, objectFit: 'contain' }}
+              />
+            ) : null}
+          </div>
         </header>
 
         <table style={{ width: '100%', marginBottom: 16, fontSize: '12pt' }}>
