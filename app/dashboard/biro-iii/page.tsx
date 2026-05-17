@@ -1,6 +1,6 @@
 import { requireRole } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { StatCard } from '@/components/ui/Card';
+import { PageHeader, StatCard } from '@/components/ui/Card';
 
 export default async function BiroIIIDashboard() {
   const session = await requireRole('BIRO_III');
@@ -17,14 +17,11 @@ export default async function BiroIIIDashboard() {
   );
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard Biro III</h1>
-        <p className="text-sm text-gray-500">Review pengajuan tahap 1.</p>
-      </div>
+      <PageHeader title="Dashboard Biro III" subtitle="Review tahap 1 pengajuan peminjaman fasilitas." />
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Menunggu Review" value={waiting} />
-        <StatCard label="Disetujui Anda" value={approved} />
-        <StatCard label="Ditolak Anda" value={rejected} />
+        <StatCard label="Menunggu Review" value={waiting} tone="amber" />
+        <StatCard label="Disetujui Anda" value={approved} tone="emerald" />
+        <StatCard label="Ditolak Anda" value={rejected} tone="rose" />
       </div>
     </div>
   );

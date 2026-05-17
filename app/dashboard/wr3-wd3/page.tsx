@@ -1,6 +1,6 @@
 import { requireRole } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { StatCard } from '@/components/ui/Card';
+import { PageHeader, StatCard } from '@/components/ui/Card';
 
 export default async function WR3Dashboard() {
   const session = await requireRole('WR3_WD3');
@@ -17,14 +17,11 @@ export default async function WR3Dashboard() {
   );
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard WR3 / WD3</h1>
-        <p className="text-sm text-gray-500">Validasi digital pengajuan.</p>
-      </div>
+      <PageHeader title="Dashboard WR3 / WD3" subtitle="Validasi digital pengajuan tahap 2." />
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Menunggu Validasi" value={waiting} />
-        <StatCard label="Disetujui Anda" value={approved} />
-        <StatCard label="Ditolak Anda" value={rejected} />
+        <StatCard label="Menunggu Validasi" value={waiting} tone="amber" />
+        <StatCard label="Disetujui Anda" value={approved} tone="emerald" />
+        <StatCard label="Ditolak Anda" value={rejected} tone="rose" />
       </div>
     </div>
   );

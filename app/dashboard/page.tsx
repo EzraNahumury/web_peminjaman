@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser, dashboardPathForRole } from '@/lib/auth';
-import { StatCard } from '@/components/ui/Card';
+import { PageHeader, StatCard } from '@/components/ui/Card';
 import { query } from '@/lib/db';
 
 export default async function DashboardIndex() {
@@ -17,15 +17,12 @@ export default async function DashboardIndex() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard Super Admin</h1>
-        <p className="text-sm text-gray-500">Ringkasan sistem peminjaman fasilitas.</p>
-      </div>
+      <PageHeader title="Dashboard Super Admin" subtitle="Ringkasan sistem peminjaman fasilitas." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total User" value={totalUsers} />
-        <StatCard label="Total Pengajuan" value={totalReq} />
-        <StatCard label="Sedang Diproses" value={totalPending} />
-        <StatCard label="Disetujui" value={totalAppr} />
+        <StatCard label="Total User" value={totalUsers} tone="violet" />
+        <StatCard label="Total Pengajuan" value={totalReq} tone="slate" />
+        <StatCard label="Sedang Diproses" value={totalPending} tone="amber" />
+        <StatCard label="Disetujui" value={totalAppr} tone="emerald" />
       </div>
     </div>
   );

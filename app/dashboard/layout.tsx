@@ -10,11 +10,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const unread = await unreadCount(user.id);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-slate-50">
       <Navbar name={user.name} role={user.role} unread={unread} />
       <div className="flex flex-1">
         <Sidebar role={user.role} />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 bg-slate-50 px-6 py-8 lg:px-10">
+          <div className="mx-auto max-w-7xl">{children}</div>
+        </main>
       </div>
     </div>
   );

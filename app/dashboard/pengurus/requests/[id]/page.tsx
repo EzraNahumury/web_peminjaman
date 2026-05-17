@@ -27,59 +27,72 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
      WHERE al.requestId = ? ORDER BY al.createdAt ASC`,
     [req.id]
   );
-
   const displayStatus: RequestStatus = DISPLAY_REJECT.includes(req.status) ? 'REJECTED' : req.status;
+  const canCancel = !['APPROVED', 'REJECTED', 'CANCELLED', 'REJECTED_BY_BIRO_III', 'REJECTED_BY_WR3_WD3'].includes(req.status);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-mono text-xs text-gray-500">{req.requestCode}</p>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">{req.activityName}</h1>
-          <p className="text-sm text-gray-500">{req.organizationName}</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <StatusBadge status={displayStatus} />
-          {req.status === 'REVISION_REQUESTED' && (
-            <Link
-              href={`/dashboard/pengurus/requests/${req.id}/edit`}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Edit & Submit Ulang
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <Link href="/dashboard/pengurus/requests" className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              Kembali ke daftar
             </Link>
-          )}
-          {!['APPROVED', 'REJECTED', 'CANCELLED'].includes(req.status) && (
-            <form action={cancelRequest.bind(null, req.id)}>
-              <Button type="submit" variant="ghost">Batalkan</Button>
-            </form>
-          )}
+            <p className="font-mono text-xs font-medium text-slate-500">{req.requestCode}</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{req.activityName}</h1>
+            <p className="mt-1 text-sm text-slate-600">{req.organizationName}</p>
+          </div>
+          <div className="flex flex-col items-end gap-3">
+            <StatusBadge status={displayStatus} />
+            <div className="flex gap-2">
+              {req.status === 'REVISION_REQUESTED' && (
+                <Link href={`/dashboard/pengurus/requests/${req.id}/edit`}>
+                  <Button>Edit & Submit Ulang</Button>
+                </Link>
+              )}
+              {canCancel && (
+                <form action={cancelRequest.bind(null, req.id)}>
+                  <Button type="submit" variant="outline">
+                    Batalkan
+                  </Button>
+                </form>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">Detail Kegiatan</h2>
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <Item label="Fasilitas" value={req.facilityName} />
-              <Item label="Jumlah Peserta" value={req.participantCount ?? '-'} />
-              <Item label="Mulai" value={fmtDateTime(req.startDateTime)} />
-              <Item label="Selesai" value={fmtDateTime(req.endDateTime)} />
-              <Item label="Penanggung Jawab" value={req.personInCharge} />
-              <Item label="ID PIC" value={req.identityNumber ?? '-'} />
-              <Item label="Email" value={req.email} />
-              <Item label="No HP" value={req.phone} />
-              <Item label="Tujuan" value={req.purpose} full />
-              <Item label="Deskripsi" value={req.description} full />
-              <Item label="Kebutuhan Tambahan" value={req.additionalNeeds ?? '-'} full />
-              <Item label="Lampiran" value={req.attachmentUrl ?? '-'} full />
-              <Item label="Catatan" value={req.notes ?? '-'} full />
-            </dl>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
+          <div className="border-b border-slate-100 px-6 py-4">
+            <h2 className="text-sm font-semibold text-slate-900">Detail Kegiatan</h2>
           </div>
+          <dl className="grid gap-5 p-6 sm:grid-cols-2">
+            <Item label="Fasilitas" value={req.facilityName} />
+            <Item label="Jumlah Peserta" value={req.participantCount ?? '-'} />
+            <Item label="Mulai" value={fmtDateTime(req.startDateTime)} />
+            <Item label="Selesai" value={fmtDateTime(req.endDateTime)} />
+            <Item label="Penanggung Jawab" value={req.personInCharge} />
+            <Item label="ID PIC" value={req.identityNumber ?? '-'} />
+            <Item label="Email" value={req.email} />
+            <Item label="No HP" value={req.phone} />
+            <Item label="Tujuan" value={req.purpose} full />
+            <Item label="Deskripsi" value={req.description} full />
+            <Item label="Kebutuhan Tambahan" value={req.additionalNeeds ?? '-'} full />
+            <Item label="Lampiran" value={req.attachmentUrl ?? '-'} full />
+            <Item label="Catatan" value={req.notes ?? '-'} full />
+          </dl>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">Riwayat Approval</h2>
-          <Timeline logs={logs} />
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-6 py-4">
+            <h2 className="text-sm font-semibold text-slate-900">Riwayat Approval</h2>
+          </div>
+          <div className="p-6">
+            <Timeline logs={logs} />
+          </div>
         </div>
       </div>
     </div>
@@ -89,8 +102,8 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
 function Item({ label, value, full }: { label: string; value: React.ReactNode; full?: boolean }) {
   return (
     <div className={full ? 'sm:col-span-2' : ''}>
-      <dt className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</dt>
-      <dd className="mt-0.5 text-sm text-gray-900">{value}</dd>
+      <dt className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</dt>
+      <dd className="mt-1 text-sm text-slate-900">{value}</dd>
     </div>
   );
 }

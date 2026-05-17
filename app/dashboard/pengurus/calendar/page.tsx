@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { FacilityCalendar } from '@/components/dashboard/FacilityCalendar';
+import { PageHeader } from '@/components/ui/Card';
 import type { Facility, FacilityRequest } from '@/types';
 
 export default async function PengurusCalendar() {
@@ -13,11 +14,8 @@ export default async function PengurusCalendar() {
      ORDER BY fr.startDateTime ASC`
   );
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Kalender Fasilitas</h1>
-        <p className="text-sm text-gray-500">Daftar jadwal fasilitas yang sudah dibooking atau sedang diproses.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Kalender Fasilitas" subtitle="Jadwal fasilitas yang sudah dibooking atau sedang diproses." />
       <FacilityCalendar facilities={facilities} rows={rows} />
     </div>
   );
