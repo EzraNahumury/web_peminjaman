@@ -8,7 +8,7 @@ export async function proxy(req: NextRequest) {
   const token = req.cookies.get('session')?.value;
   const session = await decryptSession(token);
 
-  if (path.startsWith('/dashboard') && !session?.userId) {
+  if ((path.startsWith('/dashboard') || path.startsWith('/surat')) && !session?.userId) {
     return NextResponse.redirect(new URL('/login', req.nextUrl));
   }
   if (PUBLIC.has(path) && session?.userId && path !== '/') {
