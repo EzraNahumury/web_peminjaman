@@ -1,7 +1,14 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { fmtDateTime } from '@/lib/request-code';
-import { MANAGING_UNIT_LABEL, type Facility, type FacilityRequest, type ManagingUnit, type RequestStatus } from '@/types';
+import {
+  MANAGING_UNIT_LABEL,
+  type Facility,
+  type FacilityBlock,
+  type FacilityRequest,
+  type ManagingUnit,
+  type RequestStatus,
+} from '@/types';
 import { Select } from '@/components/ui/Field';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 
@@ -13,23 +20,57 @@ function toLocalDate(d: Date | string): string {
   return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`;
 }
 
-type Row = FacilityRequest & { facilityName: string };
+type BookingRow = FacilityRequest & { facilityName: string };
+type BlockRow = FacilityBlock & { facilityName: string | null };
+type Item =
+  | { type: 'booking'; row: BookingRow; start: string; end: string; facilityId: number | null }
+  | { type: 'block'; row: BlockRow; start: string; end: string; facilityId: number | null };
 
-export function FacilityCalendar({ facilities, rows }: { facilities: Facility[]; rows: Row[] }) {
+export function FacilityCalendar({
+  facilities,
+  rows,
+  blocks = [],
+}: {
+  facilities: Facility[];
+  rows: BookingRow[];
+  blocks?: BlockRow[];
+}) {
   const [facId, setFacId] = useState<string>('');
   const [date, setDate] = useState<string>('');
 
+  const items = useMemo<Item[]>(() => {
+    const a: Item[] = rows.map((r) => ({
+      type: 'booking',
+      row: r,
+      start: String(r.startDateTime),
+      end: String(r.endDateTime),
+      facilityId: r.facilityId,
+    }));
+    const b: Item[] = blocks.map((r) => ({
+      type: 'block',
+      row: r,
+      start: String(r.startDateTime),
+      end: String(r.endDateTime),
+      facilityId: r.facilityId,
+    }));
+    return [...a, ...b].sort((x, y) => new Date(x.start).getTime() - new Date(y.start).getTime());
+  }, [rows, blocks]);
+
   const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      if (facId && String(r.facilityId) !== facId) return false;
+    return items.filter((it) => {
+      if (facId) {
+        const selected = Number(facId);
+        if (it.type === 'booking' && it.facilityId !== selected) return false;
+        if (it.type === 'block' && it.facilityId !== null && it.facilityId !== selected) return false;
+      }
       if (date) {
-        const dStart = toLocalDate(r.startDateTime);
-        const dEnd = toLocalDate(r.endDateTime);
+        const dStart = toLocalDate(it.start);
+        const dEnd = toLocalDate(it.end);
         if (date < dStart || date > dEnd) return false;
       }
       return true;
     });
-  }, [facId, date, rows]);
+  }, [items, facId, date]);
 
   return (
     <div className="space-y-4">
@@ -40,11 +81,11 @@ export function FacilityCalendar({ facilities, rows }: { facilities: Facility[];
             <Select value={facId} onChange={(e) => setFacId(e.target.value)}>
               <option value="">Semua fasilitas</option>
               {UNIT_ORDER.map((unit) => {
-                const items = facilities.filter((f) => f.managingUnit === unit);
-                if (items.length === 0) return null;
+                const list = facilities.filter((f) => f.managingUnit === unit);
+                if (list.length === 0) return null;
                 return (
                   <optgroup key={unit} label={MANAGING_UNIT_LABEL[unit]}>
-                    {items.map((f) => (
+                    {list.map((f) => (
                       <option key={f.id} value={f.id}>
                         {f.name} ({f.category})
                       </option>
@@ -64,6 +105,14 @@ export function FacilityCalendar({ facilities, rows }: { facilities: Facility[];
             />
           </div>
         </div>
+        <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-blue-500" /> Booking aktif/menunggu
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-rose-500" /> Diblokir Admin
+          </span>
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -75,31 +124,56 @@ export function FacilityCalendar({ facilities, rows }: { facilities: Facility[];
               </svg>
             </div>
             <p className="text-sm font-medium text-slate-700">Tidak ada jadwal</p>
-            <p className="mt-1 text-xs text-slate-500">Belum ada booking aktif untuk filter yang dipilih.</p>
+            <p className="mt-1 text-xs text-slate-500">Belum ada booking atau blokir aktif untuk filter ini.</p>
           </div>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {filtered.map((r) => (
-              <li key={r.id} className="flex items-start justify-between gap-4 p-5 transition hover:bg-slate-50">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21V11M15 21V11" />
-                    </svg>
+            {filtered.map((it) =>
+              it.type === 'booking' ? (
+                <li key={`b-${it.row.id}`} className="flex items-start justify-between gap-4 p-5 transition hover:bg-slate-50">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21V11M15 21V11" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{it.row.facilityName}</p>
+                      <p className="text-xs text-slate-500">
+                        {it.row.activityName} — {it.row.organizationName}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-slate-600">
+                        {fmtDateTime(it.row.startDateTime)} — {fmtDateTime(it.row.endDateTime)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{r.facilityName}</p>
-                    <p className="text-xs text-slate-500">
-                      {r.activityName} — {r.organizationName}
-                    </p>
-                    <p className="mt-1 text-xs font-medium text-slate-600">
-                      {fmtDateTime(r.startDateTime)} — {fmtDateTime(r.endDateTime)}
-                    </p>
+                  <StatusBadge status={it.row.status as RequestStatus} />
+                </li>
+              ) : (
+                <li key={`x-${it.row.id}`} className="flex items-start justify-between gap-4 p-5 transition hover:bg-rose-50/30">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {it.row.facilityName ?? 'Semua Fasilitas'}
+                      </p>
+                      <p className="text-xs text-rose-700">Diblokir Admin: {it.row.reason}</p>
+                      <p className="mt-1 text-xs font-medium text-slate-600">
+                        {fmtDateTime(it.row.startDateTime)} — {fmtDateTime(it.row.endDateTime)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <StatusBadge status={r.status as RequestStatus} />
-              </li>
-            ))}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                    Diblokir
+                  </span>
+                </li>
+              )
+            )}
           </ul>
         )}
       </div>
