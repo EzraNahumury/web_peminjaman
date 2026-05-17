@@ -56,7 +56,7 @@ export function Navbar({ name, role, unread }: { name: string; role: string; unr
           )}
         </Link>
 
-        <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
+        <Link href="/dashboard/profile" className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 transition hover:bg-slate-50">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-xs font-semibold text-white">
             {initials || 'U'}
           </div>
@@ -66,7 +66,7 @@ export function Navbar({ name, role, unread }: { name: string; role: string; unr
               {ROLE_LABEL[role] || role}
             </span>
           </div>
-        </div>
+        </Link>
 
         <form action={logout}>
           <button

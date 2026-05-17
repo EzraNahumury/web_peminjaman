@@ -42,6 +42,7 @@ export interface User {
   organizationName: string | null;
   phone: string | null;
   identityNumber: string | null;
+  organizationLogoUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

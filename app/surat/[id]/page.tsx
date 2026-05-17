@@ -20,13 +20,14 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
       pengurusName: string;
       pengurusIdentity: string | null;
       pengurusOrg: string | null;
+      pengurusLogoUrl: string | null;
     }
   >(
     `SELECT fr.*,
             f.name AS facilityName, f.location AS facilityLocation,
             f.category AS facilityCategory, f.managingUnit,
             u.name AS pengurusName, u.identityNumber AS pengurusIdentity,
-            u.organizationName AS pengurusOrg
+            u.organizationName AS pengurusOrg, u.organizationLogoUrl AS pengurusLogoUrl
      FROM facility_requests fr
      JOIN facilities f ON f.id = fr.facilityId
      JOIN users u ON u.id = fr.userId
@@ -71,12 +72,24 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="surat-paper">
-        <header style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 24 }}>
-          <p style={{ fontSize: '14pt', fontWeight: 700, letterSpacing: 1, margin: 0 }}>BADAN PERWAKILAN MAHASISWA</p>
-          <p style={{ fontSize: '13pt', fontWeight: 700, margin: '4px 0 0' }}>UNIVERSITAS KRISTEN DUTA WACANA</p>
-          <p style={{ fontSize: '10pt', margin: '6px 0 0' }}>Jl. Dr. Wahidin Sudirohusodo No. 5-24 Yogyakarta 55224</p>
-          <p style={{ fontSize: '10pt', margin: '2px 0 0' }}>Sekretariat: Gedung Bundar Atrium Didaktos</p>
-          <p style={{ fontSize: '10pt', margin: '2px 0 0' }}>Email: bpm.ukdw@students.ukdw.ac.id</p>
+        <header style={{ borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 24 }}>
+          {req.pengurusLogoUrl && (
+            <img
+              src={req.pengurusLogoUrl}
+              alt="Logo Organisasi"
+              style={{ width: 70, height: 70, objectFit: 'contain' }}
+            />
+          )}
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <p style={{ fontSize: '14pt', fontWeight: 700, letterSpacing: 1, margin: 0 }}>
+              {req.pengurusOrg || 'BADAN PERWAKILAN MAHASISWA'}
+            </p>
+            <p style={{ fontSize: '13pt', fontWeight: 700, margin: '4px 0 0' }}>UNIVERSITAS KRISTEN DUTA WACANA</p>
+            <p style={{ fontSize: '10pt', margin: '6px 0 0' }}>Jl. Dr. Wahidin Sudirohusodo No. 5-24 Yogyakarta 55224</p>
+            <p style={{ fontSize: '10pt', margin: '2px 0 0' }}>Sekretariat: Gedung Bundar Atrium Didaktos</p>
+            <p style={{ fontSize: '10pt', margin: '2px 0 0' }}>Email: bpm.ukdw@students.ukdw.ac.id</p>
+          </div>
+          {req.pengurusLogoUrl && <div style={{ width: 70 }} />}
         </header>
 
         <table style={{ width: '100%', marginBottom: 16, fontSize: '12pt' }}>
