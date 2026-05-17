@@ -7,6 +7,12 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 
 const UNIT_ORDER: ManagingUnit[] = ['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'];
 
+function toLocalDate(d: Date | string): string {
+  const x = new Date(d);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`;
+}
+
 type Row = FacilityRequest & { facilityName: string };
 
 export function FacilityCalendar({ facilities, rows }: { facilities: Facility[]; rows: Row[] }) {
@@ -17,8 +23,8 @@ export function FacilityCalendar({ facilities, rows }: { facilities: Facility[];
     return rows.filter((r) => {
       if (facId && String(r.facilityId) !== facId) return false;
       if (date) {
-        const dStart = new Date(r.startDateTime).toISOString().slice(0, 10);
-        const dEnd = new Date(r.endDateTime).toISOString().slice(0, 10);
+        const dStart = toLocalDate(r.startDateTime);
+        const dEnd = toLocalDate(r.endDateTime);
         if (date < dStart || date > dEnd) return false;
       }
       return true;
