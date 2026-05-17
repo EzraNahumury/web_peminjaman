@@ -27,14 +27,19 @@ export function RequestForm({ facilities, mode, initial }: Props) {
   const [facilityId, setFacilityId] = useState<string>(initial ? String(initial.facilityId) : '');
   const [start, setStart] = useState<string>(initial ? toLocal(initial.startDateTime) : '');
   const [end, setEnd] = useState<string>(initial ? toLocal(initial.endDateTime) : '');
-  const [avail, setAvail] = useState<null | { available: boolean; alternatives: Facility[] }>(null);
+  const [avail, setAvail] = useState<null | { available: boolean; alternatives: Facility[]; blocked: boolean; blockReason: string | null }>(null);
   const [checking, startChecking] = useTransition();
 
   function doCheck() {
     if (!facilityId || !start || !end) return;
     startChecking(async () => {
       const res = await checkAvailability(Number(facilityId), start, end);
-      setAvail({ available: res.available, alternatives: res.alternatives });
+      setAvail({
+        available: res.available,
+        alternatives: res.alternatives,
+        blocked: res.blocked,
+        blockReason: res.blockReason,
+      });
     });
   }
 
@@ -110,10 +115,19 @@ export function RequestForm({ facilities, mode, initial }: Props) {
               }`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${avail.available ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              {avail.available ? 'Fasilitas tersedia' : 'Tidak tersedia pada jadwal tersebut'}
+              {avail.available
+                ? 'Fasilitas tersedia'
+                : avail.blocked
+                  ? 'Diblokir admin pada jadwal tersebut'
+                  : 'Tidak tersedia pada jadwal tersebut'}
             </span>
           )}
         </div>
+        {avail && avail.blocked && avail.blockReason && (
+          <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
+            <strong>Alasan blokir:</strong> {avail.blockReason}
+          </div>
+        )}
         {avail && !avail.available && avail.alternatives.length > 0 && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm font-semibold text-amber-900">Saran fasilitas alternatif (kategori sama, jadwal kosong)</p>

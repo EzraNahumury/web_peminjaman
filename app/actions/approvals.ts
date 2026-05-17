@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { execute, queryOne, query } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { createNotification, createNotificationForRole } from '@/lib/notifications';
-import { findOverlap } from '@/lib/availability';
+import { findBlocks, findOverlap } from '@/lib/availability';
 import type { FacilityRequest, RequestStatus } from '@/types';
 
 async function loadRequest(id: number) {
@@ -100,7 +100,13 @@ export async function approveByAdminUnit(requestId: number, note: string | null)
   if (!req) return { error: 'Pengajuan tidak ditemukan' };
   if (req.status !== 'WAITING_ADMIN_UNIT') return { error: 'Status tidak valid' };
 
-  const overlaps = await findOverlap(req.facilityId, new Date(req.startDateTime), new Date(req.endDateTime), requestId);
+  const start = new Date(req.startDateTime);
+  const end = new Date(req.endDateTime);
+  const [overlaps, blocks] = await Promise.all([
+    findOverlap(req.facilityId, start, end, requestId),
+    findBlocks(req.facilityId, start, end),
+  ]);
+  if (blocks.length > 0) return { error: `Fasilitas diblokir admin: ${blocks[0].reason}` };
   if (overlaps.length > 0) return { error: 'Terdapat bentrok jadwal — tidak dapat disetujui' };
 
   await execute(

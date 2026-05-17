@@ -116,6 +116,16 @@ export interface ApprovalLog {
   createdAt: Date;
 }
 
+export interface FacilityBlock {
+  id: number;
+  facilityId: number | null;
+  startDateTime: Date;
+  endDateTime: Date;
+  reason: string;
+  createdBy: number | null;
+  createdAt: Date;
+}
+
 export interface Notification {
   id: number;
   userId: number;

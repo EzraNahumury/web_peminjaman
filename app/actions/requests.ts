@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { execute, query, queryOne } from '@/lib/db';
 import { requireRole, verifySession } from '@/lib/auth';
-import { findOverlap, getAlternatives, isAvailable } from '@/lib/availability';
+import { findBlocks, findOverlap, getAlternatives, isAvailable } from '@/lib/availability';
 import { createNotification, createNotificationForRole } from '@/lib/notifications';
 import { FacilityRequestSchema } from '@/lib/validations';
 import { generateRequestCode, toMysqlDateTime } from '@/lib/request-code';
@@ -18,12 +18,17 @@ export async function checkAvailability(facilityId: number, start: string, end: 
   const s = new Date(start);
   const e = new Date(end);
   if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e <= s) {
-    return { ok: false, available: false, reason: 'Tanggal/jam tidak valid', alternatives: [] };
+    return { ok: false, available: false, reason: 'Tanggal/jam tidak valid', blocked: false, blockReason: null, alternatives: [] };
+  }
+  const blocks = await findBlocks(facilityId, s, e);
+  if (blocks.length > 0) {
+    const alts = await getAlternatives(facilityId, s, e);
+    return { ok: true, available: false, blocked: true, blockReason: blocks[0].reason, alternatives: alts };
   }
   const ok = await isAvailable(facilityId, s, e);
-  if (ok) return { ok: true, available: true, alternatives: [] };
+  if (ok) return { ok: true, available: true, blocked: false, blockReason: null, alternatives: [] };
   const alts = await getAlternatives(facilityId, s, e);
-  return { ok: true, available: false, alternatives: alts };
+  return { ok: true, available: false, blocked: false, blockReason: null, alternatives: alts };
 }
 
 export async function createFacilityRequest(_prev: RequestFormState, formData: FormData): Promise<RequestFormState> {
@@ -53,6 +58,11 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
 
   const start = new Date(d.startDateTime);
   const end = new Date(d.endDateTime);
+  const blocks = await findBlocks(d.facilityId, start, end);
+  if (blocks.length > 0) {
+    const alts = await getAlternatives(d.facilityId, start, end);
+    return { error: `Fasilitas diblokir admin pada jadwal tersebut: ${blocks[0].reason}`, alternatives: alts };
+  }
   const overlaps = await findOverlap(d.facilityId, start, end);
   if (overlaps.length > 0) {
     const alts = await getAlternatives(d.facilityId, start, end);
@@ -126,6 +136,11 @@ export async function updateRevisionRequest(
   const d = parsed.data;
   const start = new Date(d.startDateTime);
   const end = new Date(d.endDateTime);
+  const blocks = await findBlocks(d.facilityId, start, end);
+  if (blocks.length > 0) {
+    const alts = await getAlternatives(d.facilityId, start, end);
+    return { error: `Fasilitas diblokir admin pada jadwal tersebut: ${blocks[0].reason}`, alternatives: alts };
+  }
   const overlaps = await findOverlap(d.facilityId, start, end, requestId);
   if (overlaps.length > 0) {
     const alts = await getAlternatives(d.facilityId, start, end);

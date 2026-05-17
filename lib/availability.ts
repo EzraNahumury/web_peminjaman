@@ -1,6 +1,6 @@
 import 'server-only';
 import { query, type SqlParam } from '@/lib/db';
-import type { Facility, FacilityRequest } from '@/types';
+import type { Facility, FacilityBlock, FacilityRequest } from '@/types';
 
 const BLOCKING_SQL = "('APPROVED','WAITING_BIRO_III','WAITING_WR3_WD3','WAITING_ADMIN_UNIT')";
 
@@ -23,9 +23,22 @@ export async function findOverlap(
   return query<FacilityRequest>(sql, params);
 }
 
+export async function findBlocks(facilityId: number, start: Date, end: Date): Promise<FacilityBlock[]> {
+  return query<FacilityBlock>(
+    `SELECT * FROM facility_blocks
+     WHERE (facilityId = ? OR facilityId IS NULL)
+       AND startDateTime < ?
+       AND endDateTime > ?`,
+    [facilityId, end, start]
+  );
+}
+
 export async function isAvailable(facilityId: number, start: Date, end: Date, excludeRequestId?: number) {
-  const overlaps = await findOverlap(facilityId, start, end, excludeRequestId);
-  return overlaps.length === 0;
+  const [overlaps, blocks] = await Promise.all([
+    findOverlap(facilityId, start, end, excludeRequestId),
+    findBlocks(facilityId, start, end),
+  ]);
+  return overlaps.length === 0 && blocks.length === 0;
 }
 
 export async function getAlternatives(facilityId: number, start: Date, end: Date): Promise<Facility[]> {
@@ -44,9 +57,15 @@ export async function getAlternatives(facilityId: number, start: Date, end: Date
            AND fr.startDateTime < ?
            AND fr.endDateTime > ?
        )
+       AND NOT EXISTS (
+         SELECT 1 FROM facility_blocks fb
+         WHERE (fb.facilityId = f.id OR fb.facilityId IS NULL)
+           AND fb.startDateTime < ?
+           AND fb.endDateTime > ?
+       )
      ORDER BY f.capacity DESC
      LIMIT 5`,
-    [facilityId, category, end, start]
+    [facilityId, category, end, start, end, start]
   );
   return rows;
 }
