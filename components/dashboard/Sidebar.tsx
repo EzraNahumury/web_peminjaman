@@ -14,6 +14,7 @@ const ICONS = {
   bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
   inbox: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z',
   lock: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4',
+  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.1-1.3l2-1.5-2-3.4-2.3.9a7.5 7.5 0 0 0-2.3-1.3l-.3-2.4h-4l-.3 2.4a7.5 7.5 0 0 0-2.3 1.3l-2.3-.9-2 3.4 2 1.5a7.4 7.4 0 0 0 0 2.6l-2 1.5 2 3.4 2.3-.9a7.5 7.5 0 0 0 2.3 1.3l.3 2.4h4l.3-2.4a7.5 7.5 0 0 0 2.3-1.3l2.3.9 2-3.4-2-1.5c.1-.4.1-.9.1-1.3Z',
 };
 
 const MENUS: Record<Role, MenuItem[]> = {
@@ -41,6 +42,7 @@ const MENUS: Record<Role, MenuItem[]> = {
     { label: 'Dashboard', href: '/dashboard/admin-unit', icon: ICONS.home },
     { label: 'Pengajuan Masuk', href: '/dashboard/admin-unit/requests', icon: ICONS.inbox },
     { label: 'Blokir Jadwal', href: '/dashboard/admin-unit/blocks', icon: ICONS.lock },
+    { label: 'Kelola Fasilitas', href: '/dashboard/admin-unit/facilities', icon: ICONS.settings },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: ICONS.building },
     { label: 'Notifikasi', href: '/dashboard/notifications', icon: ICONS.bell },
   ],
