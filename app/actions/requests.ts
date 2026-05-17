@@ -178,22 +178,45 @@ export async function updateRevisionRequest(
   redirect(`/dashboard/pengurus/requests/${requestId}`);
 }
 
-export async function cancelRequest(requestId: number) {
+export async function cancelRequest(requestId: number, reason?: string | null) {
   const session = await requireRole('PENGURUS');
   const current = await queryOne<FacilityRequest>(
     'SELECT * FROM facility_requests WHERE id = ? AND userId = ?',
     [requestId, session.userId]
   );
-  if (!current) return;
-  if (['APPROVED', 'REJECTED', 'CANCELLED'].includes(current.status)) return;
+  if (!current) return { error: 'Pengajuan tidak ditemukan' };
+  if (['REJECTED', 'REJECTED_BY_BIRO_III', 'REJECTED_BY_WR3_WD3', 'CANCELLED'].includes(current.status)) {
+    return { error: 'Pengajuan sudah dalam status final, tidak bisa dibatalkan' };
+  }
+
+  const wasApproved = current.status === 'APPROVED';
 
   await execute('UPDATE facility_requests SET status = ?, currentStep = NULL WHERE id = ?', ['CANCELLED', requestId]);
+
+  if (wasApproved) {
+    await execute(
+      "UPDATE facility_bookings SET status = 'CANCELLED' WHERE requestId = ?",
+      [requestId]
+    );
+  }
+
   await execute(
     `INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note)
      VALUES (?,?,?,?,?,?)`,
-    [requestId, session.userId, 'CANCEL', current.status, 'CANCELLED', null]
+    [requestId, session.userId, 'CANCEL', current.status, 'CANCELLED', reason || null]
   );
+
+  if (wasApproved) {
+    const msg = `Pengajuan ${current.requestCode} dibatalkan oleh pengaju${reason ? `: ${reason}` : ''}`;
+    for (const role of ['BIRO_III', 'WR3_WD3', 'ADMIN_UNIT'] as const) {
+      await createNotificationForRole(role, 'Pengajuan dibatalkan', msg, null);
+    }
+  }
+
   revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
+  revalidatePath('/dashboard/pengurus/requests');
+  revalidatePath('/dashboard/pengurus/calendar');
+  return { ok: true };
 }
 
 export async function getMyRequests() {

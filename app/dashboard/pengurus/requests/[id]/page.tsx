@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Timeline } from '@/components/dashboard/Timeline';
 import { Button } from '@/components/ui/Button';
 import { fmtDateTime } from '@/lib/request-code';
-import { cancelRequest } from '@/app/actions/requests';
+import { CancelButton } from '@/components/dashboard/CancelButton';
 import type { ApprovalLog, FacilityRequest, RequestStatus } from '@/types';
 
 const DISPLAY_REJECT: RequestStatus[] = ['REJECTED_BY_BIRO_III', 'REJECTED_BY_WR3_WD3'];
@@ -28,7 +28,7 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
     [req.id]
   );
   const displayStatus: RequestStatus = DISPLAY_REJECT.includes(req.status) ? 'REJECTED' : req.status;
-  const canCancel = !['APPROVED', 'REJECTED', 'CANCELLED', 'REJECTED_BY_BIRO_III', 'REJECTED_BY_WR3_WD3'].includes(req.status);
+  const canCancel = !['REJECTED', 'CANCELLED', 'REJECTED_BY_BIRO_III', 'REJECTED_BY_WR3_WD3'].includes(req.status);
 
   return (
     <div className="space-y-6">
@@ -63,13 +63,7 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
                   <Button>Edit & Submit Ulang</Button>
                 </Link>
               )}
-              {canCancel && (
-                <form action={cancelRequest.bind(null, req.id)}>
-                  <Button type="submit" variant="outline">
-                    Batalkan
-                  </Button>
-                </form>
-              )}
+              {canCancel && <CancelButton requestId={req.id} approved={req.status === 'APPROVED'} />}
             </div>
           </div>
         </div>
