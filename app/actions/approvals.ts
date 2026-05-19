@@ -9,8 +9,20 @@ import { PRIORITY_ORDER_SQL } from '@/utils/priority';
 import { toMysqlDateTime } from '@/lib/request-code';
 import type { FacilityRequest, RequestStatus } from '@/types';
 
-async function loadRequest(id: number) {
-  return queryOne<FacilityRequest>('SELECT * FROM facility_requests WHERE id = ?', [id]);
+type LoadedRequest = FacilityRequest & { facilityName: string };
+
+async function loadRequest(id: number): Promise<LoadedRequest | null> {
+  return queryOne<LoadedRequest>(
+    `SELECT fr.*, f.name AS facilityName
+     FROM facility_requests fr
+     JOIN facilities f ON f.id = fr.facilityId
+     WHERE fr.id = ?`,
+    [id]
+  );
+}
+
+function facilityLabel(req: LoadedRequest): string {
+  return req.facilityName || req.activityName;
 }
 
 async function notifyOwner(
@@ -52,13 +64,13 @@ export async function approveByBiroIII(requestId: number, note: string | null) {
   await notifyValidatorsByScope(
     req.activityScope,
     `Pengajuan menunggu validasi ${scopeLabel}`,
-    `Pengajuan ${req.requestCode} - ${req.activityName}`,
+    `${facilityLabel(req)} — ${req.activityName} (${req.organizationName})`,
     `/dashboard/wr3-wd3/requests/${requestId}`
   );
   await notifyOwner(
     req,
     `Pengajuan disetujui Biro III`,
-    `Pengajuan ${req.requestCode} diteruskan ke ${scopeLabel}`,
+    `Peminjaman ${facilityLabel(req)} diteruskan ke ${scopeLabel}.`,
     { skipWA: true }
   );
   revalidatePath(`/dashboard/biro-iii/requests/${requestId}`);
@@ -78,7 +90,12 @@ export async function rejectByBiroIII(requestId: number, note: string | null) {
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'REJECT_BIRO_III', 'WAITING_BIRO_III', 'REJECTED_BY_BIRO_III', note]
   );
-  await notifyOwner(req, 'Pengajuan ditolak', `Pengajuan ${req.requestCode} ditolak oleh Biro III`, { skipWA: true });
+  await notifyOwner(
+    req,
+    'Pengajuan ditolak',
+    `Peminjaman ${facilityLabel(req)} ditolak oleh Biro III.${note ? ` Alasan: ${note}` : ''}`,
+    { skipWA: true }
+  );
   revalidatePath(`/dashboard/biro-iii/requests/${requestId}`);
   return { ok: true };
 }
@@ -96,13 +113,13 @@ export async function approveByWR3WD3(requestId: number, note: string | null) {
   await createNotificationForRole(
     'ADMIN_UNIT',
     'Pengajuan menunggu review akhir',
-    `Pengajuan ${req.requestCode} - ${req.activityName}`,
+    `${facilityLabel(req)} — ${req.activityName} (${req.organizationName})`,
     `/dashboard/admin-unit/requests/${requestId}`
   );
   await notifyOwner(
     req,
     'Pengajuan disetujui oleh Biro III dan WR3/WD3',
-    `Pengajuan ${req.requestCode} telah disetujui. Silakan upload surat yang sudah divalidasi pada halaman detail pengajuan untuk diteruskan ke Admin Unit.`
+    `Peminjaman ${facilityLabel(req)} telah disetujui. Silakan upload surat yang sudah divalidasi pada halaman detail pengajuan untuk diteruskan ke Admin Unit.`
   );
   revalidatePath(`/dashboard/wr3-wd3/requests/${requestId}`);
   return { ok: true };
@@ -121,7 +138,11 @@ export async function rejectByWR3WD3(requestId: number, note: string | null) {
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'REJECT_WR3_WD3', 'WAITING_WR3_WD3', 'REJECTED_BY_WR3_WD3', note]
   );
-  await notifyOwner(req, 'Pengajuan ditolak', `Pengajuan ${req.requestCode} ditolak oleh WR3/WD3`);
+  await notifyOwner(
+    req,
+    'Pengajuan ditolak WR3/WD3',
+    `Peminjaman ${facilityLabel(req)} ditolak oleh WR3/WD3.${note ? ` Alasan: ${note}` : ''}`
+  );
   revalidatePath(`/dashboard/wr3-wd3/requests/${requestId}`);
   return { ok: true };
 }
@@ -154,9 +175,18 @@ export async function approveByAdminUnit(requestId: number, note: string | null)
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'APPROVE_ADMIN', 'WAITING_ADMIN_UNIT', 'APPROVED', note]
   );
-  await notifyOwner(req, 'Pengajuan disetujui', `Pengajuan ${req.requestCode} resmi disetujui dan dijadwalkan`);
+  await notifyOwner(
+    req,
+    'Pengajuan disetujui',
+    `Peminjaman ${facilityLabel(req)} (${req.activityName}) resmi disetujui dan telah dijadwalkan.`
+  );
   for (const role of ['BIRO_III', 'WR3_WD3', 'ADMIN_UNIT'] as const) {
-    await createNotificationForRole(role, 'Pengajuan disetujui', `Pengajuan ${req.requestCode} resmi APPROVED`, null);
+    await createNotificationForRole(
+      role,
+      'Pengajuan disetujui',
+      `${facilityLabel(req)} — ${req.activityName} resmi APPROVED.`,
+      null
+    );
   }
   revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
   return { ok: true };
@@ -175,7 +205,11 @@ export async function rejectByAdminUnit(requestId: number, note: string | null) 
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'REJECT_ADMIN', 'WAITING_ADMIN_UNIT', 'REJECTED', note]
   );
-  await notifyOwner(req, 'Pengajuan ditolak', `Pengajuan ${req.requestCode} ditolak oleh Admin Unit`);
+  await notifyOwner(
+    req,
+    'Pengajuan ditolak',
+    `Peminjaman ${facilityLabel(req)} ditolak oleh Admin Unit.${note ? ` Alasan: ${note}` : ''}`
+  );
   revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
   return { ok: true };
 }
@@ -222,7 +256,7 @@ export async function offerAlternativeByAdminUnit(
   await notifyOwner(
     req,
     'Alternatif ditawarkan',
-    `Admin Unit menawarkan alternatif untuk ${req.requestCode}. Tinjau dan revisi pengajuan.`
+    `Admin Unit menawarkan alternatif untuk peminjaman ${facilityLabel(req)}. Tinjau dan revisi pengajuan.`
   );
   revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
   return { ok: true };
@@ -244,7 +278,7 @@ export async function holdByAdminUnit(requestId: number, note: string | null) {
   await notifyOwner(
     req,
     'Pengajuan ditahan sementara',
-    note || `Pengajuan ${req.requestCode} ditahan oleh Admin Unit untuk peninjauan tambahan.`
+    note || `Peminjaman ${facilityLabel(req)} ditahan oleh Admin Unit untuk peninjauan tambahan.`
   );
   revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
   return { ok: true };
@@ -266,7 +300,7 @@ export async function resumeByAdminUnit(requestId: number, note: string | null) 
   await notifyOwner(
     req,
     'Pengajuan dilanjutkan',
-    `Pengajuan ${req.requestCode} kembali ditinjau Admin Unit.`
+    `Peminjaman ${facilityLabel(req)} kembali ditinjau Admin Unit.`
   );
   revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
   return { ok: true };
@@ -285,7 +319,11 @@ export async function requestRevisionByAdminUnit(requestId: number, note: string
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'REQUEST_REVISION', 'WAITING_ADMIN_UNIT', 'REVISION_REQUESTED', note]
   );
-  await notifyOwner(req, 'Pengajuan butuh revisi', note || `Pengajuan ${req.requestCode} perlu direvisi`);
+  await notifyOwner(
+    req,
+    'Pengajuan butuh revisi',
+    note || `Peminjaman ${facilityLabel(req)} perlu direvisi.`
+  );
   revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
   return { ok: true };
 }

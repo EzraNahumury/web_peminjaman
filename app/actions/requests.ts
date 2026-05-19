@@ -92,10 +92,11 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
     [result.insertId, session.userId, 'SUBMIT', null, 'WAITING_BIRO_III', null]
   );
 
+  void code;
   await createNotificationForRole(
     'BIRO_III',
     'Pengajuan baru menunggu review',
-    `Pengajuan ${code} - ${d.activityName} dari ${d.organizationName}`,
+    `${facility.name} — ${d.activityName} (${d.organizationName})`,
     `/dashboard/biro-iii/requests/${result.insertId}`
   );
 
@@ -171,10 +172,15 @@ export async function updateRevisionRequest(
     [requestId, session.userId, 'RESUBMIT_REVISION', 'REVISION_REQUESTED', 'WAITING_BIRO_III', null]
   );
 
+  const facilityForResubmit = await queryOne<{ name: string }>(
+    'SELECT name FROM facilities WHERE id = ?',
+    [d.facilityId]
+  );
+  const facLabelResubmit = facilityForResubmit?.name ?? current.activityName;
   await createNotificationForRole(
     'BIRO_III',
     'Revisi pengajuan disubmit ulang',
-    `Pengajuan ${current.requestCode} disubmit ulang setelah revisi`,
+    `Peminjaman ${facLabelResubmit} — ${d.activityName} disubmit ulang setelah revisi.`,
     `/dashboard/biro-iii/requests/${requestId}`
   );
 
@@ -211,7 +217,12 @@ export async function cancelRequest(requestId: number, reason?: string | null) {
   );
 
   if (wasApproved) {
-    const msg = `Pengajuan ${current.requestCode} dibatalkan oleh pengaju${reason ? `: ${reason}` : ''}`;
+    const facilityForCancel = await queryOne<{ name: string }>(
+      'SELECT name FROM facilities WHERE id = ?',
+      [current.facilityId]
+    );
+    const facLabelCancel = facilityForCancel?.name ?? current.activityName;
+    const msg = `Peminjaman ${facLabelCancel} — ${current.activityName} dibatalkan oleh pengaju${reason ? `: ${reason}` : ''}.`;
     for (const role of ['BIRO_III', 'WR3_WD3', 'ADMIN_UNIT'] as const) {
       await createNotificationForRole(role, 'Pengajuan dibatalkan', msg, null);
     }
