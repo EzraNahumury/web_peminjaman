@@ -12,8 +12,8 @@ const ProfileSchema = z.object({
   name: z.string().trim().min(2, 'Nama minimal 2 karakter'),
   email: z.string().trim().toLowerCase().email('Email tidak valid'),
   phone: z.string().trim().min(6, 'No HP minimal 6 karakter'),
-  organizationName: z.string().trim().optional().or(z.literal('')),
-  identityNumber: z.string().trim().optional().or(z.literal('')),
+  organizationName: z.string().trim().nullish().transform((v) => v ?? ''),
+  identityNumber: z.string().trim().nullish().transform((v) => v ?? ''),
 });
 
 const PasswordSchema = z
