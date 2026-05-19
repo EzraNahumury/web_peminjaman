@@ -99,7 +99,11 @@ export async function approveByWR3WD3(requestId: number, note: string | null) {
     `Pengajuan ${req.requestCode} - ${req.activityName}`,
     `/dashboard/admin-unit/requests/${requestId}`
   );
-  await notifyOwner(req, 'Pengajuan disetujui WR3/WD3', `Pengajuan ${req.requestCode} diteruskan ke Admin Unit`);
+  await notifyOwner(
+    req,
+    'Pengajuan disetujui oleh Biro III dan WR3/WD3',
+    `Pengajuan ${req.requestCode} telah disetujui. Silakan upload surat yang sudah divalidasi pada halaman detail pengajuan untuk diteruskan ke Admin Unit.`
+  );
   revalidatePath(`/dashboard/wr3-wd3/requests/${requestId}`);
   return { ok: true };
 }
