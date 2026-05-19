@@ -1,6 +1,8 @@
 'use client';
 import Image from 'next/image';
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Field, Input } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import {
@@ -31,9 +33,20 @@ function Alert({ state }: { state: ProfileFormState }) {
 }
 
 export function ProfileEditForm({ user }: { user: User }) {
+  const router = useRouter();
   const [state, action, pending] = useActionState<ProfileFormState, FormData>(updateProfile, undefined);
   const errs = state?.fieldErrors ?? {};
   const isPengurus = user.role === 'PENGURUS';
+
+  useEffect(() => {
+    if (state?.success) {
+      toast.success('Profil disimpan', { description: state.success });
+      router.refresh();
+    } else if (state?.error) {
+      toast.error('Gagal menyimpan', { description: state.error });
+    }
+  }, [state, router]);
+
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
