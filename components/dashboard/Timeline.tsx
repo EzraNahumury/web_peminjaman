@@ -41,6 +41,9 @@ const ACTION: Record<string, { label: string; tone: ToneKey; icon: string }> = {
     icon: 'm6 4 14 8L6 20z',
   },
   CANCEL: { label: 'Dibatalkan', tone: 'cancelled', icon: 'M18 6 6 18M6 6l12 12' },
+  ADMIN_OVERRIDE: { label: 'Admin minta perpindahan', tone: 'revision', icon: 'M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74M21 3v6h-6' },
+  ACCEPT_OVERRIDE: { label: 'Pengaju menerima perpindahan', tone: 'approved', icon: 'M20 6 9 17l-5-5' },
+  REJECT_OVERRIDE: { label: 'Pengaju menolak perpindahan', tone: 'rejected', icon: 'M18 6 6 18M6 6l12 12' },
 };
 
 const TONE: Record<ToneKey, string> = {

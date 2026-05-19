@@ -3,8 +3,9 @@ import { requireRole } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
 import { ApproverRequestDetail } from '@/components/dashboard/ApproverRequestDetail';
 import { AdminUnitActions } from '@/components/dashboard/AdminUnitActions';
+import { AdminOverrideButton } from '@/components/dashboard/AdminOverrideButton';
 import { getAlternatives } from '@/lib/availability';
-import type { ApprovalLog, FacilityRequest } from '@/types';
+import type { ApprovalLog, Facility, FacilityRequest } from '@/types';
 
 export default async function AdminUnitDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,8 +27,12 @@ export default async function AdminUnitDetail({ params }: { params: Promise<{ id
   );
 
   const actionable = req.status === 'WAITING_ADMIN_UNIT' || req.status === 'ON_HOLD';
+  const isApproved = req.status === 'APPROVED';
   const alternatives = actionable
     ? await getAlternatives(req.facilityId, new Date(req.startDateTime), new Date(req.endDateTime))
+    : [];
+  const allFacilities = isApproved
+    ? await query<Facility>('SELECT * FROM facilities WHERE isActive = 1 ORDER BY managingUnit, name')
     : [];
 
   return (
@@ -41,6 +46,18 @@ export default async function AdminUnitDetail({ params }: { params: Promise<{ id
             status={req.status as 'WAITING_ADMIN_UNIT' | 'ON_HOLD'}
             facilityOptions={alternatives.map((f) => ({ id: f.id, name: f.name }))}
           />
+        ) : isApproved ? (
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--neutral-600)]">
+              Pengajuan sudah disetujui. Gunakan tombol di bawah hanya untuk keadaan mendesak —
+              pengaju akan diminta menerima atau menolak penggantian.
+            </p>
+            <AdminOverrideButton requestId={req.id} facilities={allFacilities} />
+          </div>
+        ) : req.status === 'OVERRIDE_OFFERED' ? (
+          <p className="text-sm text-[var(--neutral-600)]">
+            Menunggu respons pengaju atas tawaran perpindahan.
+          </p>
         ) : (
           <p className="text-sm text-gray-500">Pengajuan sudah diproses pada tahap ini.</p>
         )

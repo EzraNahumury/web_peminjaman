@@ -26,6 +26,7 @@ import { Timeline } from '@/components/dashboard/Timeline';
 import { Button } from '@/components/ui/Button';
 import { CancelButton } from '@/components/dashboard/CancelButton';
 import { SignedLetterUploader } from '@/components/dashboard/SignedLetterUploader';
+import { OverrideOfferCard } from '@/components/dashboard/OverrideOfferCard';
 import { formatWIBDate, formatWIBTime } from '@/utils/date';
 import { ACTIVITY_SCOPE_LABEL } from '@/types';
 import type { ApprovalLog, FacilityRequest, RequestStatus } from '@/types';
@@ -80,10 +81,18 @@ function bannerFor(status: RequestStatus, latestNote: string | null, latestActio
 export default async function PengurusRequestDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireRole('PENGURUS');
-  const req = await queryOne<FacilityRequest & { facilityName: string; facilityLocation: string | null }>(
-    `SELECT fr.*, f.name AS facilityName, f.location AS facilityLocation
+  const req = await queryOne<
+    FacilityRequest & {
+      facilityName: string;
+      facilityLocation: string | null;
+      proposedFacilityName: string | null;
+    }
+  >(
+    `SELECT fr.*, f.name AS facilityName, f.location AS facilityLocation,
+            pf.name AS proposedFacilityName
      FROM facility_requests fr
      JOIN facilities f ON f.id = fr.facilityId
+     LEFT JOIN facilities pf ON pf.id = fr.proposedFacilityId
      WHERE fr.id = ? AND fr.userId = ?`,
     [Number(id), session.userId]
   );
@@ -234,6 +243,20 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
           {req.status === 'WAITING_ADMIN_UNIT' && (
             <SignedLetterUploader requestId={req.id} currentUrl={req.signedLetterUrl} />
           )}
+
+          {req.status === 'OVERRIDE_OFFERED' &&
+            req.proposedFacilityName &&
+            req.proposedStartDateTime &&
+            req.proposedEndDateTime && (
+              <OverrideOfferCard
+                requestId={req.id}
+                oldFacility={req.facilityName}
+                newFacility={req.proposedFacilityName}
+                newStart={req.proposedStartDateTime}
+                newEnd={req.proposedEndDateTime}
+                reason={req.overrideReason}
+              />
+            )}
         </div>
 
         {/* Timeline */}

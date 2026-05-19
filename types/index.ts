@@ -31,6 +31,7 @@ export type RequestStatus =
   | 'WAITING_ADMIN_UNIT'
   | 'REVISION_REQUESTED'
   | 'ON_HOLD'
+  | 'OVERRIDE_OFFERED'
   | 'APPROVED'
   | 'REJECTED'
   | 'CANCELLED';
@@ -50,6 +51,9 @@ export type LogAction =
   | 'OFFER_ALTERNATIVE'
   | 'HOLD'
   | 'RESUME'
+  | 'ADMIN_OVERRIDE'
+  | 'ACCEPT_OVERRIDE'
+  | 'REJECT_OVERRIDE'
   | 'CANCEL';
 
 export const BLOCKING_STATUSES: RequestStatus[] = [
@@ -130,6 +134,10 @@ export interface FacilityRequest {
   attachmentUrl: string | null;
   signedLetterUrl: string | null;
   notes: string | null;
+  proposedFacilityId: number | null;
+  proposedStartDateTime: Date | null;
+  proposedEndDateTime: Date | null;
+  overrideReason: string | null;
   status: RequestStatus;
   currentStep: string | null;
   submittedAt: Date | null;
