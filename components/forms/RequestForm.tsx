@@ -75,6 +75,19 @@ export function RequestForm({ facilities, mode, initial }: Props) {
           <Field label="Perkiraan Jumlah Peserta" error={errs.participantCount}>
             <Input type="number" name="participantCount" defaultValue={initial?.participantCount ?? ''} min={0} />
           </Field>
+          <div className="sm:col-span-2">
+            <Field
+              label="Lingkup Kegiatan"
+              error={errs.activityScope}
+              hint="UNIVERSITAS → divalidasi WR3 · FAKULTAS → divalidasi WD3"
+              required
+            >
+              <Select name="activityScope" defaultValue={initial?.activityScope ?? 'UNIVERSITAS'} required>
+                <option value="UNIVERSITAS">Tingkat Universitas</option>
+                <option value="FAKULTAS">Tingkat Fakultas</option>
+              </Select>
+            </Field>
+          </div>
         </div>
       </Section>
 

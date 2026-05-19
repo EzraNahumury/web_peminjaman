@@ -84,18 +84,29 @@ async function main() {
     );
   }
 
-  const users: [string, string, string, string | null, string, string | null][] = [
-    ['Pengurus Demo', 'pengurus@kampus.test', 'PENGURUS', 'BEM Universitas', '081234567890', '2021001'],
-    ['Biro III Demo', 'biro3@kampus.test', 'BIRO_III', null, '081234567891', null],
-    ['WR3 Demo', 'wr3@kampus.test', 'WR3_WD3', null, '081234567892', null],
-    ['Admin Unit Demo', 'adminunit@kampus.test', 'ADMIN_UNIT', null, '081234567893', null],
-    ['Super Admin', 'superadmin@kampus.test', 'SUPER_ADMIN', null, '081234567894', null],
+  type UserRow = [
+    name: string,
+    email: string,
+    role: string,
+    org: string | null,
+    phone: string,
+    idnum: string | null,
+    isActive: 0 | 1,
+    userScope: 'UNIVERSITAS' | 'FAKULTAS' | null
+  ];
+  const users: UserRow[] = [
+    ['Pengurus Demo', 'pengurus@kampus.test', 'PENGURUS', 'BEM Universitas', '081234567890', '2021001', 1, null],
+    ['Biro III Demo', 'biro3@kampus.test', 'BIRO_III', null, '081234567891', null, 1, null],
+    ['WR3 Demo', 'wr3@kampus.test', 'WR3_WD3', null, '081234567892', null, 1, 'UNIVERSITAS'],
+    ['WD3 Demo', 'wd3@kampus.test', 'WR3_WD3', null, '081234567895', null, 1, 'FAKULTAS'],
+    ['Admin Unit Demo', 'adminunit@kampus.test', 'ADMIN_UNIT', null, '081234567893', null, 1, null],
+    ['Super Admin', 'superadmin@kampus.test', 'SUPER_ADMIN', null, '081234567894', null, 1, null],
   ];
 
-  for (const [name, email, role, org, phone, idnum] of users) {
+  for (const [name, email, role, org, phone, idnum, isActive, scope] of users) {
     await conn.execute(
-      'INSERT INTO users (name, email, password, role, organizationName, phone, identityNumber) VALUES (?,?,?,?,?,?,?)',
-      [name, email, hash, role, org, phone, idnum]
+      'INSERT INTO users (name, email, password, role, isActive, userScope, organizationName, phone, identityNumber) VALUES (?,?,?,?,?,?,?,?,?)',
+      [name, email, hash, role, isActive, scope, org, phone, idnum]
     );
   }
 

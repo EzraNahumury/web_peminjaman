@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 function LoginForm() {
   const sp = useSearchParams();
   const registered = sp.get('registered');
+  const isPending = registered === 'pending';
   const [state, action, pending] = useActionState<FormState, FormData>(login, undefined);
   const errs = state?.fieldErrors ?? {};
 
@@ -28,11 +29,19 @@ function LoginForm() {
         </div>
 
         {registered && (
-          <div className="mb-5 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
+          <div
+            className={`mb-5 flex items-start gap-2 rounded-lg border px-3.5 py-2.5 text-sm ${
+              isPending
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            }`}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
-              <path d="M20 6 9 17l-5-5" />
+              <path d={isPending ? 'M12 9v4M12 17h.01M5.07 19h13.86A2 2 0 0 0 20.66 16L13.73 4a2 2 0 0 0-3.46 0L3.34 16A2 2 0 0 0 5.07 19Z' : 'M20 6 9 17l-5-5'} />
             </svg>
-            Pendaftaran berhasil. Silakan masuk.
+            {isPending
+              ? 'Pendaftaran berhasil. Akun Anda menunggu aktivasi Super Admin. Anda akan dapat login setelah disetujui.'
+              : 'Pendaftaran berhasil. Silakan masuk.'}
           </div>
         )}
 

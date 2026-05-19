@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { execute, query, queryOne } from '@/lib/db';
 import { requireRole, verifySession } from '@/lib/auth';
 import { findBlocks, findOverlap, getAlternatives, isAvailable } from '@/lib/availability';
-import { createNotification, createNotificationForRole } from '@/lib/notifications';
+import { createNotificationForRole } from '@/lib/notifications';
 import { FacilityRequestSchema } from '@/lib/validations';
 import { generateRequestCode, toMysqlDateTime } from '@/lib/request-code';
 import type { Facility, FacilityRequest } from '@/types';
@@ -46,6 +46,7 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
     participantCount: formData.get('participantCount') || undefined,
     purpose: formData.get('purpose'),
     description: formData.get('description'),
+    activityScope: formData.get('activityScope') || 'UNIVERSITAS',
     additionalNeeds: formData.get('additionalNeeds'),
     attachmentUrl: formData.get('attachmentUrl'),
     notes: formData.get('notes'),
@@ -73,14 +74,14 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
   const result = await execute(
     `INSERT INTO facility_requests
      (requestCode, userId, facilityId, activityName, organizationName, personInCharge, identityNumber,
-      email, phone, startDateTime, endDateTime, participantCount, purpose, description,
+      email, phone, startDateTime, endDateTime, participantCount, purpose, description, activityScope,
       additionalNeeds, attachmentUrl, notes, status, currentStep, submittedAt)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
     [
       code, session.userId, d.facilityId, d.activityName, d.organizationName, d.personInCharge,
       d.identityNumber || null, d.email, d.phone, toMysqlDateTime(start), toMysqlDateTime(end),
-      d.participantCount ?? null, d.purpose, d.description, d.additionalNeeds || null,
-      d.attachmentUrl || null, d.notes || null, 'WAITING_BIRO_III', 'BIRO_III',
+      d.participantCount ?? null, d.purpose, d.description, d.activityScope,
+      d.additionalNeeds || null, d.attachmentUrl || null, d.notes || null, 'WAITING_BIRO_III', 'BIRO_III',
     ]
   );
 
@@ -127,6 +128,7 @@ export async function updateRevisionRequest(
     participantCount: formData.get('participantCount') || undefined,
     purpose: formData.get('purpose'),
     description: formData.get('description'),
+    activityScope: formData.get('activityScope') || current.activityScope || 'UNIVERSITAS',
     additionalNeeds: formData.get('additionalNeeds'),
     attachmentUrl: formData.get('attachmentUrl'),
     notes: formData.get('notes'),
@@ -151,12 +153,12 @@ export async function updateRevisionRequest(
     `UPDATE facility_requests SET
        facilityId=?, activityName=?, organizationName=?, personInCharge=?, identityNumber=?,
        email=?, phone=?, startDateTime=?, endDateTime=?, participantCount=?, purpose=?,
-       description=?, additionalNeeds=?, attachmentUrl=?, notes=?, status=?, currentStep=?, submittedAt=NOW()
+       description=?, activityScope=?, additionalNeeds=?, attachmentUrl=?, notes=?, status=?, currentStep=?, submittedAt=NOW()
      WHERE id = ?`,
     [
       d.facilityId, d.activityName, d.organizationName, d.personInCharge, d.identityNumber || null,
       d.email, d.phone, toMysqlDateTime(start), toMysqlDateTime(end), d.participantCount ?? null,
-      d.purpose, d.description, d.additionalNeeds || null, d.attachmentUrl || null, d.notes || null,
+      d.purpose, d.description, d.activityScope, d.additionalNeeds || null, d.attachmentUrl || null, d.notes || null,
       'WAITING_BIRO_III', 'BIRO_III', requestId,
     ]
   );

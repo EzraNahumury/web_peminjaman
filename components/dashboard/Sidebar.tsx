@@ -53,9 +53,10 @@ const MENUS: Record<Role, MenuItem[]> = {
   ],
   SUPER_ADMIN: [
     { label: 'Dashboard', href: '/dashboard', icon: ICONS.home },
+    { label: 'Manajemen User', href: '/dashboard/super-admin/users', icon: ICONS.user },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: ICONS.building },
     { label: 'Notifikasi', href: '/dashboard/notifications', icon: ICONS.bell },
-    { label: 'Profil', href: '/dashboard/profile', icon: ICONS.user },
+    { label: 'Profil', href: '/dashboard/profile', icon: ICONS.settings },
   ],
 };
 

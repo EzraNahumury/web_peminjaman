@@ -26,13 +26,22 @@ export async function decryptSession(token: string | undefined): Promise<Session
   }
 }
 
-export async function createSession(user: { id: number; role: SessionPayload['role']; email: string; name: string }) {
+export async function createSession(user: {
+  id: number;
+  role: SessionPayload['role'];
+  email: string;
+  name: string;
+  isActive: boolean;
+  userScope?: SessionPayload['userScope'];
+}) {
   const expiresAt = Date.now() + EXPIRES_IN_MS;
   const token = await encryptSession({
     userId: user.id,
     role: user.role,
     email: user.email,
     name: user.name,
+    isActive: user.isActive,
+    userScope: user.userScope ?? null,
     expiresAt,
   });
   const store = await cookies();

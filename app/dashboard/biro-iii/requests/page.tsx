@@ -2,14 +2,20 @@ import { requireRole } from '@/lib/auth';
 import { getRequestsForRole } from '@/app/actions/approvals';
 import { RequestTable } from '@/components/dashboard/RequestTable';
 import { PageHeader } from '@/components/ui/Card';
+import { Pagination } from '@/components/ui/Pagination';
 
-export default async function BiroIIIRequestsList() {
+type SearchProps = { searchParams: Promise<{ page?: string }> };
+
+export default async function BiroIIIRequestsList({ searchParams }: SearchProps) {
   await requireRole('BIRO_III');
-  const rows = await getRequestsForRole('WAITING_BIRO_III');
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page ?? '1'));
+  const { items, total, pageSize } = await getRequestsForRole('WAITING_BIRO_III', { page });
   return (
     <div className="space-y-6">
-      <PageHeader title="Pengajuan Menunggu Biro III" subtitle={`${rows.length} pengajuan menanti review tahap 1.`} />
-      <RequestTable rows={rows} baseHref="/dashboard/biro-iii/requests" showUser />
+      <PageHeader title="Pengajuan Menunggu Biro III" subtitle={`${total} pengajuan menanti review tahap 1.`} />
+      <RequestTable rows={items} baseHref="/dashboard/biro-iii/requests" showUser />
+      <Pagination total={total} page={page} pageSize={pageSize} />
     </div>
   );
 }

@@ -1,5 +1,12 @@
 export type Role = 'PENGURUS' | 'BIRO_III' | 'WR3_WD3' | 'ADMIN_UNIT' | 'SUPER_ADMIN';
 
+export type ActivityScope = 'UNIVERSITAS' | 'FAKULTAS';
+
+export const ACTIVITY_SCOPE_LABEL: Record<ActivityScope, string> = {
+  UNIVERSITAS: 'Tingkat Universitas',
+  FAKULTAS: 'Tingkat Fakultas',
+};
+
 export type RequestStatus =
   | 'DRAFT'
   | 'SUBMITTED'
@@ -29,9 +36,11 @@ export type LogAction =
 
 export const BLOCKING_STATUSES: RequestStatus[] = [
   'APPROVED',
+  'SUBMITTED',
   'WAITING_BIRO_III',
   'WAITING_WR3_WD3',
   'WAITING_ADMIN_UNIT',
+  'REVISION_REQUESTED',
 ];
 
 export interface User {
@@ -39,6 +48,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  isActive: boolean | number;
+  userScope: ActivityScope | null;
   organizationName: string | null;
   phone: string | null;
   identityNumber: string | null;
@@ -94,6 +105,7 @@ export interface FacilityRequest {
   participantCount: number | null;
   purpose: string;
   description: string;
+  activityScope: ActivityScope;
   additionalNeeds: string | null;
   attachmentUrl: string | null;
   notes: string | null;
@@ -142,6 +154,8 @@ export interface SessionPayload {
   role: Role;
   email: string;
   name: string;
+  isActive: boolean;
+  userScope?: ActivityScope | null;
   expiresAt: number;
   [key: string]: unknown;
 }

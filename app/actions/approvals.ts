@@ -15,6 +15,14 @@ async function notifyOwner(req: FacilityRequest, title: string, message: string)
   await createNotification(req.userId, title, message, `/dashboard/pengurus/requests/${req.id}`);
 }
 
+async function notifyValidatorsByScope(scope: string, title: string, message: string, link: string) {
+  const users = await query<{ id: number }>(
+    'SELECT id FROM users WHERE role = ? AND isActive = 1 AND userScope = ?',
+    ['WR3_WD3', scope]
+  );
+  await Promise.all(users.map((u) => createNotification(u.id, title, message, link)));
+}
+
 export async function approveByBiroIII(requestId: number, note: string | null) {
   const session = await requireRole('BIRO_III');
   const req = await loadRequest(requestId);
@@ -26,13 +34,15 @@ export async function approveByBiroIII(requestId: number, note: string | null) {
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'APPROVE_BIRO_III', 'WAITING_BIRO_III', 'WAITING_WR3_WD3', note]
   );
-  await createNotificationForRole(
-    'WR3_WD3',
-    'Pengajuan menunggu validasi WR3/WD3',
+
+  const scopeLabel = req.activityScope === 'FAKULTAS' ? 'WD3 (Fakultas)' : 'WR3 (Universitas)';
+  await notifyValidatorsByScope(
+    req.activityScope,
+    `Pengajuan menunggu validasi ${scopeLabel}`,
     `Pengajuan ${req.requestCode} - ${req.activityName}`,
     `/dashboard/wr3-wd3/requests/${requestId}`
   );
-  await notifyOwner(req, 'Pengajuan disetujui Biro III', `Pengajuan ${req.requestCode} diteruskan ke WR3/WD3`);
+  await notifyOwner(req, `Pengajuan disetujui Biro III`, `Pengajuan ${req.requestCode} diteruskan ke ${scopeLabel}`);
   revalidatePath(`/dashboard/biro-iii/requests/${requestId}`);
   return { ok: true };
 }
@@ -166,14 +176,35 @@ export async function requestRevisionByAdminUnit(requestId: number, note: string
   return { ok: true };
 }
 
-export async function getRequestsForRole(status: RequestStatus) {
-  return query<FacilityRequest & { facilityName: string; userName: string }>(
+export async function getRequestsForRole(
+  status: RequestStatus,
+  options?: { scope?: 'UNIVERSITAS' | 'FAKULTAS'; page?: number; pageSize?: number }
+) {
+  const page = options?.page ?? 1;
+  const pageSize = options?.pageSize ?? 10;
+  const offset = (page - 1) * pageSize;
+
+  const where: string[] = ['fr.status = ?'];
+  const params: (string | number)[] = [status];
+  if (options?.scope) {
+    where.push('fr.activityScope = ?');
+    params.push(options.scope);
+  }
+  const whereSql = where.join(' AND ');
+
+  const [{ total }] = await query<{ total: number }>(
+    `SELECT COUNT(*) AS total FROM facility_requests fr WHERE ${whereSql}`,
+    params
+  );
+  const items = await query<FacilityRequest & { facilityName: string; userName: string }>(
     `SELECT fr.*, f.name AS facilityName, u.name AS userName
      FROM facility_requests fr
      JOIN facilities f ON f.id = fr.facilityId
      JOIN users u ON u.id = fr.userId
-     WHERE fr.status = ?
-     ORDER BY fr.createdAt DESC`,
-    [status]
+     WHERE ${whereSql}
+     ORDER BY fr.createdAt DESC
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
   );
+  return { items, total, page, pageSize };
 }
