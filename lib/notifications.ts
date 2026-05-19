@@ -44,10 +44,40 @@ export async function createNotification(
 }
 
 export async function createNotificationForRole(role: Role, title: string, message: string, link?: string | null) {
-  const users = await query<{ id: number }>('SELECT id FROM users WHERE role = ?', [role]);
-  // staff-targeted: in-app only, never blast WA or email
+  const users = await query<{ id: number }>('SELECT id FROM users WHERE role = ? AND isActive = 1', [role]);
+  // staff: in-app + email, but never WA blast
   await Promise.all(
-    users.map((u) => createNotification(u.id, title, message, link, { skipWA: true, skipEmail: true }))
+    users.map((u) => createNotification(u.id, title, message, link, { skipWA: true }))
+  );
+}
+
+export async function createNotificationForBureau(
+  bureau: 'BIRO_I' | 'BIRO_IV' | 'PPLK' | 'KRT' | 'LPAIP',
+  title: string,
+  message: string,
+  link?: string | null
+) {
+  const users = await query<{ id: number }>(
+    'SELECT id FROM users WHERE role = ? AND bureauScope = ? AND isActive = 1',
+    ['ADMIN_UNIT', bureau]
+  );
+  await Promise.all(
+    users.map((u) => createNotification(u.id, title, message, link, { skipWA: true }))
+  );
+}
+
+export async function createNotificationForUserScope(
+  scope: 'UNIVERSITAS' | 'FAKULTAS',
+  title: string,
+  message: string,
+  link?: string | null
+) {
+  const users = await query<{ id: number }>(
+    'SELECT id FROM users WHERE role = ? AND userScope = ? AND isActive = 1',
+    ['WR3_WD3', scope]
+  );
+  await Promise.all(
+    users.map((u) => createNotification(u.id, title, message, link, { skipWA: true }))
   );
 }
 

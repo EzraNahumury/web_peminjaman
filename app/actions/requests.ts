@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { execute, query, queryOne } from '@/lib/db';
 import { requireRole, verifySession } from '@/lib/auth';
 import { findBlocks, findOverlap, getAlternatives, isAvailable } from '@/lib/availability';
-import { createNotificationForRole } from '@/lib/notifications';
+import { createNotificationForBureau, createNotificationForRole } from '@/lib/notifications';
 import { FacilityRequestSchema } from '@/lib/validations';
 import { generateRequestCode, toMysqlDateTime } from '@/lib/request-code';
 import type { Facility, FacilityRequest } from '@/types';
@@ -98,6 +98,12 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
     'Pengajuan baru menunggu review',
     `${facility.name} — ${d.activityName} (${d.organizationName})`,
     `/dashboard/biro-iii/requests/${result.insertId}`
+  );
+  await createNotificationForBureau(
+    facility.managingUnit as 'BIRO_I' | 'BIRO_IV' | 'PPLK' | 'KRT' | 'LPAIP',
+    'Pengajuan baru untuk unit Anda',
+    `${facility.name} — ${d.activityName} (${d.organizationName}) sedang dalam validasi Biro III. Akan diteruskan ke unit Anda setelah lolos validasi tahap 1 dan 2.`,
+    `/dashboard/admin-unit/requests`
   );
 
   revalidatePath('/dashboard/pengurus');
