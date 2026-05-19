@@ -266,6 +266,18 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
                   <option value="FAKULTAS">Tingkat Fakultas</option>
                 </Select>
               </Field>
+              <Field
+                label="Jenis kegiatan"
+                error={errs.activityLevel}
+                hint="Prioritas antrian: Akademik > Institusional > Kemahasiswaan."
+                required
+              >
+                <Select name="activityLevel" defaultValue={initial?.activityLevel ?? 'KEMAHASISWAAN'} required>
+                  <option value="KEMAHASISWAAN">Kemahasiswaan</option>
+                  <option value="INSTITUSIONAL">Institusional</option>
+                  <option value="AKADEMIK">Akademik</option>
+                </Select>
+              </Field>
             </div>
 
             <Field

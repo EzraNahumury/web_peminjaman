@@ -47,6 +47,7 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
     purpose: formData.get('purpose'),
     description: formData.get('description'),
     activityScope: formData.get('activityScope') || 'UNIVERSITAS',
+    activityLevel: formData.get('activityLevel') || 'KEMAHASISWAAN',
     additionalNeeds: formData.get('additionalNeeds'),
     attachmentUrl: formData.get('attachmentUrl'),
     notes: formData.get('notes'),
@@ -74,13 +75,13 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
   const result = await execute(
     `INSERT INTO facility_requests
      (requestCode, userId, facilityId, activityName, organizationName, personInCharge, identityNumber,
-      email, phone, startDateTime, endDateTime, participantCount, purpose, description, activityScope,
+      email, phone, startDateTime, endDateTime, participantCount, purpose, description, activityScope, activityLevel,
       additionalNeeds, attachmentUrl, notes, status, currentStep, submittedAt)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
     [
       code, session.userId, d.facilityId, d.activityName, d.organizationName, d.personInCharge,
       d.identityNumber || null, d.email, d.phone, toMysqlDateTime(start), toMysqlDateTime(end),
-      d.participantCount ?? null, d.purpose, d.description, d.activityScope,
+      d.participantCount ?? null, d.purpose, d.description, d.activityScope, d.activityLevel,
       d.additionalNeeds || null, d.attachmentUrl || null, d.notes || null, 'WAITING_BIRO_III', 'BIRO_III',
     ]
   );
@@ -129,6 +130,7 @@ export async function updateRevisionRequest(
     purpose: formData.get('purpose'),
     description: formData.get('description'),
     activityScope: formData.get('activityScope') || current.activityScope || 'UNIVERSITAS',
+    activityLevel: formData.get('activityLevel') || current.activityLevel || 'KEMAHASISWAAN',
     additionalNeeds: formData.get('additionalNeeds'),
     attachmentUrl: formData.get('attachmentUrl'),
     notes: formData.get('notes'),
@@ -153,13 +155,13 @@ export async function updateRevisionRequest(
     `UPDATE facility_requests SET
        facilityId=?, activityName=?, organizationName=?, personInCharge=?, identityNumber=?,
        email=?, phone=?, startDateTime=?, endDateTime=?, participantCount=?, purpose=?,
-       description=?, activityScope=?, additionalNeeds=?, attachmentUrl=?, notes=?, status=?, currentStep=?, submittedAt=NOW()
+       description=?, activityScope=?, activityLevel=?, additionalNeeds=?, attachmentUrl=?, notes=?, status=?, currentStep=?, submittedAt=NOW()
      WHERE id = ?`,
     [
       d.facilityId, d.activityName, d.organizationName, d.personInCharge, d.identityNumber || null,
       d.email, d.phone, toMysqlDateTime(start), toMysqlDateTime(end), d.participantCount ?? null,
-      d.purpose, d.description, d.activityScope, d.additionalNeeds || null, d.attachmentUrl || null, d.notes || null,
-      'WAITING_BIRO_III', 'BIRO_III', requestId,
+      d.purpose, d.description, d.activityScope, d.activityLevel, d.additionalNeeds || null,
+      d.attachmentUrl || null, d.notes || null, 'WAITING_BIRO_III', 'BIRO_III', requestId,
     ]
   );
 

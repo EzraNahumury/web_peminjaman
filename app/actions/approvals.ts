@@ -5,6 +5,8 @@ import { execute, queryOne, query } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { createNotification, createNotificationForRole } from '@/lib/notifications';
 import { findBlocks, findOverlap } from '@/lib/availability';
+import { PRIORITY_ORDER_SQL } from '@/utils/priority';
+import { toMysqlDateTime } from '@/lib/request-code';
 import type { FacilityRequest, RequestStatus } from '@/types';
 
 async function loadRequest(id: number) {
@@ -288,15 +290,21 @@ export async function getRequestsForRole(
     `SELECT COUNT(*) AS total FROM facility_requests fr WHERE ${whereSql}`,
     params
   );
-  const items = await query<FacilityRequest & { facilityName: string; userName: string }>(
-    `SELECT fr.*, f.name AS facilityName, u.name AS userName
+  const items = await query<FacilityRequest & { facilityName: string; userName: string; priorityScore: number }>(
+    `SELECT fr.*, f.name AS facilityName, u.name AS userName,
+       (CASE fr.activityLevel
+          WHEN 'AKADEMIK' THEN 3
+          WHEN 'INSTITUSIONAL' THEN 2
+          ELSE 1
+        END + 0.1 * TIMESTAMPDIFF(HOUR, fr.submittedAt, NOW())) AS priorityScore
      FROM facility_requests fr
      JOIN facilities f ON f.id = fr.facilityId
      JOIN users u ON u.id = fr.userId
      WHERE ${whereSql}
-     ORDER BY fr.createdAt DESC
+     ORDER BY ${PRIORITY_ORDER_SQL}
      LIMIT ${pageSize} OFFSET ${offset}`,
     params
   );
   return { items, total, page, pageSize };
 }
+

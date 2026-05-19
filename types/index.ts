@@ -7,6 +7,20 @@ export const ACTIVITY_SCOPE_LABEL: Record<ActivityScope, string> = {
   FAKULTAS: 'Tingkat Fakultas',
 };
 
+export type ActivityLevel = 'AKADEMIK' | 'INSTITUSIONAL' | 'KEMAHASISWAAN';
+
+export const ACTIVITY_LEVEL_LABEL: Record<ActivityLevel, string> = {
+  AKADEMIK: 'Akademik',
+  INSTITUSIONAL: 'Institusional',
+  KEMAHASISWAAN: 'Kemahasiswaan',
+};
+
+export const ACTIVITY_LEVEL_DESC: Record<ActivityLevel, string> = {
+  AKADEMIK: 'Kuliah, ujian, P3DM, kegiatan resmi akademik.',
+  INSTITUSIONAL: 'Kegiatan resmi institusi kampus.',
+  KEMAHASISWAAN: 'Kegiatan organisasi/lembaga kemahasiswaan.',
+};
+
 export type RequestStatus =
   | 'DRAFT'
   | 'SUBMITTED'
@@ -111,6 +125,7 @@ export interface FacilityRequest {
   purpose: string;
   description: string;
   activityScope: ActivityScope;
+  activityLevel: ActivityLevel;
   additionalNeeds: string | null;
   attachmentUrl: string | null;
   notes: string | null;
