@@ -134,6 +134,7 @@ export default async function FacilitiesPage({
       <div className="space-y-3">
         {UNIT_ORDER.map((unit) => {
           const items = grouped[unit];
+          if (items.length === 0) return null;
           const UnitIcon = UNIT_ICON[unit];
           return (
             <details
