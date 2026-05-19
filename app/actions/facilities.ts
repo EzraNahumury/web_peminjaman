@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { execute, queryOne } from '@/lib/db';
-import { requireRole } from '@/lib/auth';
+import { getCurrentUser, requireRole } from '@/lib/auth';
+import type { ManagingUnit } from '@/types';
 
 const FacilitySchema = z.object({
   name: z.string().trim().min(2, 'Nama minimal 2 karakter'),
@@ -26,8 +27,18 @@ function parseCapacity(v: string | undefined): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+async function resolveBureau(): Promise<{
+  role: 'ADMIN_UNIT' | 'SUPER_ADMIN';
+  bureau: ManagingUnit | null;
+}> {
+  const session = await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+  if (session.role === 'SUPER_ADMIN') return { role: 'SUPER_ADMIN', bureau: null };
+  const user = await getCurrentUser();
+  return { role: 'ADMIN_UNIT', bureau: (user?.bureauScope ?? null) as ManagingUnit | null };
+}
+
 export async function createFacility(_prev: FacilityFormState, formData: FormData): Promise<FacilityFormState> {
-  await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+  const { role, bureau } = await resolveBureau();
   const parsed = FacilitySchema.safeParse({
     name: formData.get('name'),
     category: formData.get('category'),
@@ -39,12 +50,16 @@ export async function createFacility(_prev: FacilityFormState, formData: FormDat
   });
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
   const d = parsed.data;
+  const effectiveUnit = role === 'ADMIN_UNIT' ? (bureau ?? d.managingUnit) : d.managingUnit;
+  if (role === 'ADMIN_UNIT' && bureau && d.managingUnit !== bureau) {
+    return { error: `Admin Unit hanya dapat menambah fasilitas untuk unit ${bureau}` };
+  }
   await execute(
     'INSERT INTO facilities (name, category, managingUnit, location, capacity, description, isActive) VALUES (?,?,?,?,?,?,?)',
     [
       d.name,
       d.category,
-      d.managingUnit,
+      effectiveUnit,
       d.location || null,
       parseCapacity(d.capacity),
       d.description || null,
@@ -57,9 +72,15 @@ export async function createFacility(_prev: FacilityFormState, formData: FormDat
 }
 
 export async function updateFacility(id: number, _prev: FacilityFormState, formData: FormData): Promise<FacilityFormState> {
-  await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
-  const existing = await queryOne<{ id: number }>('SELECT id FROM facilities WHERE id = ?', [id]);
+  const { role, bureau } = await resolveBureau();
+  const existing = await queryOne<{ id: number; managingUnit: ManagingUnit }>(
+    'SELECT id, managingUnit FROM facilities WHERE id = ?',
+    [id]
+  );
   if (!existing) return { error: 'Fasilitas tidak ditemukan' };
+  if (role === 'ADMIN_UNIT' && bureau && existing.managingUnit !== bureau) {
+    return { error: 'Fasilitas ini tidak dikelola unit Anda' };
+  }
 
   const parsed = FacilitySchema.safeParse({
     name: formData.get('name'),
@@ -72,6 +93,7 @@ export async function updateFacility(id: number, _prev: FacilityFormState, formD
   });
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
   const d = parsed.data;
+  const effectiveUnit = role === 'ADMIN_UNIT' && bureau ? bureau : d.managingUnit;
   await execute(
     `UPDATE facilities SET
        name = ?, category = ?, managingUnit = ?, location = ?, capacity = ?, description = ?, isActive = ?
@@ -79,7 +101,7 @@ export async function updateFacility(id: number, _prev: FacilityFormState, formD
     [
       d.name,
       d.category,
-      d.managingUnit,
+      effectiveUnit,
       d.location || null,
       parseCapacity(d.capacity),
       d.description || null,
@@ -94,14 +116,28 @@ export async function updateFacility(id: number, _prev: FacilityFormState, formD
 }
 
 export async function toggleFacilityActive(id: number) {
-  await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+  const { role, bureau } = await resolveBureau();
+  if (role === 'ADMIN_UNIT' && bureau) {
+    const f = await queryOne<{ managingUnit: ManagingUnit }>(
+      'SELECT managingUnit FROM facilities WHERE id = ?',
+      [id]
+    );
+    if (!f || f.managingUnit !== bureau) return;
+  }
   await execute('UPDATE facilities SET isActive = NOT isActive WHERE id = ?', [id]);
   revalidatePath('/dashboard/admin-unit/facilities');
   revalidatePath('/dashboard/facilities');
 }
 
 export async function deleteFacility(id: number): Promise<void> {
-  await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+  const { role, bureau } = await resolveBureau();
+  if (role === 'ADMIN_UNIT' && bureau) {
+    const f = await queryOne<{ managingUnit: ManagingUnit }>(
+      'SELECT managingUnit FROM facilities WHERE id = ?',
+      [id]
+    );
+    if (!f || f.managingUnit !== bureau) return;
+  }
   const inUse = await queryOne<{ c: number }>(
     'SELECT COUNT(*) c FROM facility_requests WHERE facilityId = ?',
     [id]

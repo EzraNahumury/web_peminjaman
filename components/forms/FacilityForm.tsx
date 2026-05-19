@@ -22,11 +22,20 @@ const COMMON_CATEGORIES = [
   'Kendaraan',
 ];
 
-export function FacilityForm({ mode, initial }: { mode: 'create' | 'edit'; initial?: Facility }) {
+export function FacilityForm({
+  mode,
+  initial,
+  lockUnit,
+}: {
+  mode: 'create' | 'edit';
+  initial?: Facility;
+  lockUnit?: ManagingUnit;
+}) {
   const action = mode === 'create' ? createFacility : updateFacility.bind(null, initial!.id);
   const [state, formAction, pending] = useActionState<FacilityFormState, FormData>(action, undefined);
   const errs = state?.fieldErrors ?? {};
   const isActive = initial?.isActive ?? 1;
+  const unitValue = lockUnit ?? initial?.managingUnit ?? 'BIRO_I';
 
   return (
     <form action={formAction} className="space-y-5">
@@ -42,14 +51,28 @@ export function FacilityForm({ mode, initial }: { mode: 'create' | 'edit'; initi
             ))}
           </datalist>
         </Field>
-        <Field label="Unit Pengelola" error={errs.managingUnit} required>
-          <Select name="managingUnit" defaultValue={initial?.managingUnit ?? 'BIRO_I'} required>
-            {UNIT_ORDER.map((u) => (
-              <option key={u} value={u}>
-                {MANAGING_UNIT_LABEL[u]}
-              </option>
-            ))}
-          </Select>
+        <Field
+          label="Unit Pengelola"
+          error={errs.managingUnit}
+          required
+          hint={lockUnit ? 'Unit pengelola dikunci sesuai akun Anda.' : undefined}
+        >
+          {lockUnit ? (
+            <>
+              <input type="hidden" name="managingUnit" value={lockUnit} />
+              <div className="flex h-10 items-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-[var(--neutral-50)] px-3.5 text-sm font-medium text-[var(--neutral-700)]">
+                {MANAGING_UNIT_LABEL[lockUnit]}
+              </div>
+            </>
+          ) : (
+            <Select name="managingUnit" defaultValue={unitValue} required>
+              {UNIT_ORDER.map((u) => (
+                <option key={u} value={u}>
+                  {MANAGING_UNIT_LABEL[u]}
+                </option>
+              ))}
+            </Select>
+          )}
         </Field>
         <Field label="Kapasitas" error={errs.capacity} hint="Kosongkan untuk fasilitas peralatan.">
           <Input type="number" name="capacity" defaultValue={initial?.capacity ?? ''} min={0} />

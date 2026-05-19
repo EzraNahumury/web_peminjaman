@@ -70,9 +70,13 @@ export default async function FacilitiesPage({
   const q = sp.q?.trim() || '';
   const openUnits = sp.open ? sp.open.split(',').filter((u) => UNIT_ORDER.includes(u as ManagingUnit)) : [];
 
-  const facilities = await query<Facility>(
-    'SELECT * FROM facilities WHERE isActive = 1 ORDER BY name'
-  );
+  const adminBureau = user.role === 'ADMIN_UNIT' ? (user.bureauScope as ManagingUnit | null) : null;
+  const facilities = adminBureau
+    ? await query<Facility>(
+        'SELECT * FROM facilities WHERE isActive = 1 AND managingUnit = ? ORDER BY name',
+        [adminBureau]
+      )
+    : await query<Facility>('SELECT * FROM facilities WHERE isActive = 1 ORDER BY name');
 
   const grouped: Record<ManagingUnit, Facility[]> = {
     BIRO_I: [], BIRO_IV: [], PPLK: [], KRT: [], LPAIP: [],

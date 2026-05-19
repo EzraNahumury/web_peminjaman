@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { requireRole } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { requireRole, getCurrentUser } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { PageHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -22,9 +23,16 @@ const UNIT_GRADIENT: Record<ManagingUnit, string> = {
 
 export default async function AdminFacilitiesPage() {
   await requireRole('ADMIN_UNIT');
-  const facilities = await query<Facility>(
-    'SELECT * FROM facilities ORDER BY managingUnit, name'
-  );
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  const bureau = (user.bureauScope ?? null) as ManagingUnit | null;
+
+  const facilities = bureau
+    ? await query<Facility>(
+        'SELECT * FROM facilities WHERE managingUnit = ? ORDER BY name',
+        [bureau]
+      )
+    : await query<Facility>('SELECT * FROM facilities ORDER BY managingUnit, name');
 
   const grouped: Record<ManagingUnit, Facility[]> = {
     BIRO_I: [], BIRO_IV: [], PPLK: [], KRT: [], LPAIP: [],
@@ -35,7 +43,11 @@ export default async function AdminFacilitiesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Kelola Fasilitas"
-        subtitle={`${facilities.length} fasilitas (termasuk non-aktif). Kelola data fasilitas kampus.`}
+        subtitle={
+          bureau
+            ? `${facilities.length} fasilitas di ${MANAGING_UNIT_LABEL[bureau]} (termasuk non-aktif).`
+            : `${facilities.length} fasilitas (termasuk non-aktif).`
+        }
         action={
           <Link href="/dashboard/admin-unit/facilities/new">
             <Button>
