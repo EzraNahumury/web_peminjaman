@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { fmtDateTime } from '@/lib/request-code';
 import {
   MANAGING_UNIT_LABEL,
@@ -127,42 +128,56 @@ export function FacilityCalendar({
             <p className="mt-1 text-xs text-slate-500">Belum ada booking atau blokir aktif untuk filter ini.</p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100">
-            {filtered.map((it) =>
+          <ul className="divide-y divide-[var(--neutral-100)]">
+            {filtered.map((it, idx) =>
               it.type === 'booking' ? (
-                <li key={`b-${it.row.id}`} className="flex items-start justify-between gap-4 p-5 transition hover:bg-slate-50">
+                <motion.li
+                  key={`b-${it.row.id}`}
+                  initial={{ opacity: 0, y: 14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  transition={{ duration: 0.35, ease: 'easeOut', delay: Math.min(idx, 8) * 0.025 }}
+                  className="flex items-start justify-between gap-4 p-5 transition-colors hover:bg-[var(--neutral-50)]"
+                >
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary-50)] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21V11M15 21V11" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">{it.row.facilityName}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-semibold text-[var(--neutral-900)]">{it.row.facilityName}</p>
+                      <p className="text-xs text-[var(--neutral-500)]">
                         {it.row.activityName} — {it.row.organizationName}
                       </p>
-                      <p className="mt-1 text-xs font-medium text-slate-600">
+                      <p className="mt-1 text-xs font-medium text-[var(--neutral-600)]">
                         {fmtDateTime(it.row.startDateTime)} — {fmtDateTime(it.row.endDateTime)}
                       </p>
                     </div>
                   </div>
                   <StatusBadge status={it.row.status as RequestStatus} />
-                </li>
+                </motion.li>
               ) : (
-                <li key={`x-${it.row.id}`} className="flex items-start justify-between gap-4 p-5 transition hover:bg-rose-50/30">
+                <motion.li
+                  key={`x-${it.row.id}`}
+                  initial={{ opacity: 0, y: 14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  transition={{ duration: 0.35, ease: 'easeOut', delay: Math.min(idx, 8) * 0.025 }}
+                  className="flex items-start justify-between gap-4 p-5 transition-colors hover:bg-rose-50/40"
+                >
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-rose-50 text-rose-600 ring-1 ring-rose-100">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-[var(--neutral-900)]">
                         {it.row.facilityName ?? 'Semua Fasilitas'}
                       </p>
                       <p className="text-xs text-rose-700">Diblokir Admin: {it.row.reason}</p>
-                      <p className="mt-1 text-xs font-medium text-slate-600">
+                      <p className="mt-1 text-xs font-medium text-[var(--neutral-600)]">
                         {fmtDateTime(it.row.startDateTime)} — {fmtDateTime(it.row.endDateTime)}
                       </p>
                     </div>
@@ -171,7 +186,7 @@ export function FacilityCalendar({
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                     Diblokir
                   </span>
-                </li>
+                </motion.li>
               )
             )}
           </ul>
