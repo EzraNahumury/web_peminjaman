@@ -30,16 +30,16 @@ export async function registerPengurus(_prev: FormState, formData: FormData): Pr
   const hash = await bcrypt.hash(d.password, 10);
   const result = await execute(
     'INSERT INTO users (name, email, password, role, isActive, organizationName, phone, identityNumber) VALUES (?,?,?,?,?,?,?,?)',
-    [d.name, d.email, hash, 'PENGURUS', 0, d.organizationName, d.phone, d.identityNumber || null]
+    [d.name, d.email, hash, 'PENGURUS', 1, d.organizationName, d.phone, d.identityNumber || null]
   );
   await createNotificationForRole(
     'SUPER_ADMIN',
-    'Akun pengurus baru menunggu aktivasi',
-    `${d.name} (${d.email}) dari ${d.organizationName} mendaftar dan menunggu aktivasi.`,
+    'Pengurus baru mendaftar',
+    `${d.name} (${d.email}) dari ${d.organizationName} mendaftar dan langsung aktif.`,
     `/dashboard/super-admin/users`
   );
   void result;
-  redirect('/login?registered=pending');
+  redirect('/login?registered=1');
 }
 
 export async function login(_prev: FormState, formData: FormData): Promise<FormState> {
