@@ -1,8 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
-import { query, queryOne } from '@/lib/db';
+import { queryOne } from '@/lib/db';
 import { RequestForm } from '@/components/forms/RequestForm';
-import { PageHeader } from '@/components/ui/Card';
 import type { Facility, FacilityRequest } from '@/types';
 
 export default async function EditRequestPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,14 +14,21 @@ export default async function EditRequestPage({ params }: { params: Promise<{ id
   if (!req) notFound();
   if (req.status !== 'REVISION_REQUESTED') redirect(`/dashboard/pengurus/requests/${req.id}`);
 
-  const facilities = await query<Facility>('SELECT * FROM facilities WHERE isActive = 1 ORDER BY name');
+  const facility = await queryOne<Facility>(
+    'SELECT * FROM facilities WHERE id = ? AND isActive = 1',
+    [req.facilityId]
+  );
+  if (!facility) notFound();
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Edit & Submit Ulang Pengajuan" subtitle="Setelah submit, status kembali ke WAITING_BIRO_III dan chain di-reset." />
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <RequestForm mode="edit" facilities={facilities} initial={req} />
+      <div>
+        <h1 className="text-[26px] font-bold tracking-tight text-[var(--neutral-900)]">Edit & Submit Ulang</h1>
+        <p className="mt-1 text-sm text-[var(--neutral-500)]">
+          Setelah submit, status kembali ke <span className="font-medium text-[var(--neutral-900)]">menunggu Biro III</span> dan chain di-reset.
+        </p>
       </div>
+      <RequestForm mode="edit" lockedFacility={facility} initial={req} />
     </div>
   );
 }

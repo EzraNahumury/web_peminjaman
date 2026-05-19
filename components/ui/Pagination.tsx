@@ -4,17 +4,19 @@ export function Pagination({
   total,
   page,
   pageSize,
+  paramName = 'page',
 }: {
   total: number;
   page: number;
   pageSize: number;
+  paramName?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (totalPages <= 1) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const link = (p: number) => `?page=${p}`;
+  const link = (p: number) => `?${paramName}=${p}`;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white px-5 py-3 text-sm shadow-[var(--shadow-xs)]">

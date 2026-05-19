@@ -16,6 +16,7 @@ export type RequestStatus =
   | 'REJECTED_BY_WR3_WD3'
   | 'WAITING_ADMIN_UNIT'
   | 'REVISION_REQUESTED'
+  | 'ON_HOLD'
   | 'APPROVED'
   | 'REJECTED'
   | 'CANCELLED';
@@ -32,6 +33,9 @@ export type LogAction =
   | 'REJECT_ADMIN'
   | 'REQUEST_REVISION'
   | 'RESUBMIT_REVISION'
+  | 'OFFER_ALTERNATIVE'
+  | 'HOLD'
+  | 'RESUME'
   | 'CANCEL';
 
 export const BLOCKING_STATUSES: RequestStatus[] = [
@@ -41,6 +45,7 @@ export const BLOCKING_STATUSES: RequestStatus[] = [
   'WAITING_WR3_WD3',
   'WAITING_ADMIN_UNIT',
   'REVISION_REQUESTED',
+  'ON_HOLD',
 ];
 
 export interface User {

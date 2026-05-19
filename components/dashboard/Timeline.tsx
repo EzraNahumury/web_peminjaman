@@ -1,7 +1,7 @@
 import { fmtDateTime } from '@/lib/request-code';
 import type { ApprovalLog } from '@/types';
 
-type ToneKey = 'submit' | 'approved' | 'rejected' | 'revision' | 'cancelled';
+type ToneKey = 'submit' | 'approved' | 'rejected' | 'revision' | 'cancelled' | 'hold';
 
 const ACTION: Record<string, { label: string; tone: ToneKey; icon: string }> = {
   SUBMIT: {
@@ -25,6 +25,21 @@ const ACTION: Record<string, { label: string; tone: ToneKey; icon: string }> = {
     tone: 'submit',
     icon: 'M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74M21 3v6h-6',
   },
+  OFFER_ALTERNATIVE: {
+    label: 'Ditawarkan alternatif',
+    tone: 'revision',
+    icon: 'M7 17 17 7M7 7h10v10',
+  },
+  HOLD: {
+    label: 'Ditahan Admin Unit',
+    tone: 'hold',
+    icon: 'M10 4H6v16h4zM18 4h-4v16h4z',
+  },
+  RESUME: {
+    label: 'Dilanjutkan kembali',
+    tone: 'submit',
+    icon: 'm6 4 14 8L6 20z',
+  },
   CANCEL: { label: 'Dibatalkan', tone: 'cancelled', icon: 'M18 6 6 18M6 6l12 12' },
 };
 
@@ -34,6 +49,7 @@ const TONE: Record<ToneKey, string> = {
   rejected: 'bg-rose-50 text-rose-700 ring-rose-100',
   revision: 'bg-amber-50 text-amber-700 ring-amber-100',
   cancelled: 'bg-slate-100 text-slate-700 ring-slate-200',
+  hold: 'bg-amber-50 text-amber-800 ring-amber-100',
 };
 
 export function Timeline({ logs }: { logs: (ApprovalLog & { actorName?: string | null })[] }) {

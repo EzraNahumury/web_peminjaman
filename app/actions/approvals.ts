@@ -158,6 +158,98 @@ export async function rejectByAdminUnit(requestId: number, note: string | null) 
   return { ok: true };
 }
 
+export async function offerAlternativeByAdminUnit(
+  requestId: number,
+  params: {
+    alternativeFacilityId?: number | null;
+    alternativeStart?: string | null;
+    alternativeEnd?: string | null;
+    note: string | null;
+  }
+) {
+  const session = await requireRole('ADMIN_UNIT');
+  const req = await loadRequest(requestId);
+  if (!req) return { error: 'Pengajuan tidak ditemukan' };
+  if (req.status !== 'WAITING_ADMIN_UNIT') return { error: 'Status tidak valid' };
+
+  let altFacilityName: string | null = null;
+  if (params.alternativeFacilityId) {
+    const f = await queryOne<{ name: string }>(
+      'SELECT name FROM facilities WHERE id = ? AND isActive = 1',
+      [params.alternativeFacilityId]
+    );
+    if (!f) return { error: 'Fasilitas alternatif tidak ditemukan' };
+    altFacilityName = f.name;
+  }
+
+  const parts: string[] = ['ALTERNATIF DARI ADMIN UNIT:'];
+  if (altFacilityName) parts.push(`- Fasilitas: ${altFacilityName}`);
+  if (params.alternativeStart) parts.push(`- Mulai: ${params.alternativeStart}`);
+  if (params.alternativeEnd) parts.push(`- Selesai: ${params.alternativeEnd}`);
+  if (params.note?.trim()) parts.push('', params.note.trim());
+  const finalNote = parts.join('\n');
+
+  await execute(
+    'UPDATE facility_requests SET status = ?, currentStep = ? WHERE id = ?',
+    ['REVISION_REQUESTED', 'PENGURUS_REVISION', requestId]
+  );
+  await execute(
+    'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
+    [requestId, session.userId, 'OFFER_ALTERNATIVE', 'WAITING_ADMIN_UNIT', 'REVISION_REQUESTED', finalNote]
+  );
+  await notifyOwner(
+    req,
+    'Alternatif ditawarkan',
+    `Admin Unit menawarkan alternatif untuk ${req.requestCode}. Tinjau dan revisi pengajuan.`
+  );
+  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
+  return { ok: true };
+}
+
+export async function holdByAdminUnit(requestId: number, note: string | null) {
+  const session = await requireRole('ADMIN_UNIT');
+  const req = await loadRequest(requestId);
+  if (!req) return { error: 'Pengajuan tidak ditemukan' };
+  if (req.status !== 'WAITING_ADMIN_UNIT') return { error: 'Status tidak valid' };
+  await execute(
+    'UPDATE facility_requests SET status = ?, currentStep = ? WHERE id = ?',
+    ['ON_HOLD', 'ADMIN_UNIT', requestId]
+  );
+  await execute(
+    'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
+    [requestId, session.userId, 'HOLD', 'WAITING_ADMIN_UNIT', 'ON_HOLD', note]
+  );
+  await notifyOwner(
+    req,
+    'Pengajuan ditahan sementara',
+    note || `Pengajuan ${req.requestCode} ditahan oleh Admin Unit untuk peninjauan tambahan.`
+  );
+  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
+  return { ok: true };
+}
+
+export async function resumeByAdminUnit(requestId: number, note: string | null) {
+  const session = await requireRole('ADMIN_UNIT');
+  const req = await loadRequest(requestId);
+  if (!req) return { error: 'Pengajuan tidak ditemukan' };
+  if (req.status !== 'ON_HOLD') return { error: 'Status tidak valid' };
+  await execute(
+    'UPDATE facility_requests SET status = ?, currentStep = ? WHERE id = ?',
+    ['WAITING_ADMIN_UNIT', 'ADMIN_UNIT', requestId]
+  );
+  await execute(
+    'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
+    [requestId, session.userId, 'RESUME', 'ON_HOLD', 'WAITING_ADMIN_UNIT', note]
+  );
+  await notifyOwner(
+    req,
+    'Pengajuan dilanjutkan',
+    `Pengajuan ${req.requestCode} kembali ditinjau Admin Unit.`
+  );
+  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
+  return { ok: true };
+}
+
 export async function requestRevisionByAdminUnit(requestId: number, note: string | null) {
   const session = await requireRole('ADMIN_UNIT');
   const req = await loadRequest(requestId);

@@ -12,9 +12,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen bg-[var(--neutral-50)]">
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} name={user.name} identityNumber={user.identityNumber} unread={unread} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Navbar name={user.name} role={user.role} unread={unread} />
+        <Navbar role={user.role} unread={unread} />
         <main className="flex-1 px-6 py-8 lg:px-10">
           <div className="mx-auto max-w-7xl">
             <PageTransition>{children}</PageTransition>

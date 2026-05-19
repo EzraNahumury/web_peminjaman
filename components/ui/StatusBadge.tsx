@@ -9,6 +9,7 @@ const MAP: Record<RequestStatus, { label: string; bg: string; fg: string; dot: s
   REJECTED_BY_WR3_WD3: { label: 'Ditolak', bg: 'var(--status-rejected-bg)', fg: 'var(--status-rejected-fg)', dot: '#dc2626' },
   WAITING_ADMIN_UNIT: { label: 'Menunggu Admin Unit', bg: 'var(--status-pending-bg)', fg: 'var(--status-pending-fg)', dot: '#d97706' },
   REVISION_REQUESTED: { label: 'Perlu Revisi', bg: 'var(--status-info-bg)', fg: 'var(--status-info-fg)', dot: '#0284c7' },
+  ON_HOLD: { label: 'Ditahan', bg: 'var(--status-pending-bg)', fg: 'var(--status-pending-fg)', dot: '#a16207' },
   APPROVED: { label: 'Disetujui', bg: 'var(--status-approved-bg)', fg: 'var(--status-approved-fg)', dot: '#16a34a' },
   REJECTED: { label: 'Ditolak', bg: 'var(--status-rejected-bg)', fg: 'var(--status-rejected-fg)', dot: '#dc2626' },
   CANCELLED: { label: 'Dibatalkan', bg: 'var(--status-cancelled-bg)', fg: 'var(--status-cancelled-fg)', dot: '#6b7280' },

@@ -2,12 +2,8 @@ import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
 import { ApproverRequestDetail } from '@/components/dashboard/ApproverRequestDetail';
-import { ApprovalActions } from '@/components/dashboard/ApprovalActions';
-import {
-  approveByAdminUnit,
-  rejectByAdminUnit,
-  requestRevisionByAdminUnit,
-} from '@/app/actions/approvals';
+import { AdminUnitActions } from '@/components/dashboard/AdminUnitActions';
+import { getAlternatives } from '@/lib/availability';
 import type { ApprovalLog, FacilityRequest } from '@/types';
 
 export default async function AdminUnitDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -28,18 +24,22 @@ export default async function AdminUnitDetail({ params }: { params: Promise<{ id
      WHERE al.requestId = ? ORDER BY al.createdAt ASC`,
     [req.id]
   );
-  const canAct = req.status === 'WAITING_ADMIN_UNIT';
+
+  const actionable = req.status === 'WAITING_ADMIN_UNIT' || req.status === 'ON_HOLD';
+  const alternatives = actionable
+    ? await getAlternatives(req.facilityId, new Date(req.startDateTime), new Date(req.endDateTime))
+    : [];
+
   return (
     <ApproverRequestDetail
       req={req}
       logs={logs}
       actions={
-        canAct ? (
-          <ApprovalActions
+        actionable ? (
+          <AdminUnitActions
             requestId={req.id}
-            approve={approveByAdminUnit}
-            reject={rejectByAdminUnit}
-            revision={requestRevisionByAdminUnit}
+            status={req.status as 'WAITING_ADMIN_UNIT' | 'ON_HOLD'}
+            facilityOptions={alternatives.map((f) => ({ id: f.id, name: f.name }))}
           />
         ) : (
           <p className="text-sm text-gray-500">Pengajuan sudah diproses pada tahap ini.</p>

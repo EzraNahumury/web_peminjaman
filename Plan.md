@@ -1,324 +1,243 @@
-# PLAN.md — Eksekusi Bertahap FASKO (Revisi 1)
+# PLAN.md — FASKO (Revisi 2, 2026-05-19)
 
-> Revisi setelah audit langsung terhadap RULES §0–§10 pada 2026-05-18.
-> Asumsi sebelumnya ("logic sudah jalan") TIDAK benar — banyak gap signifikan
-> di layer logic. Plan diurutkan: **logic dulu, baru UI**.
->
-> User sudah memberi izin: schema database, server actions, dan middleware
-> boleh diubah. Tidak perlu konfirmasi per perubahan.
+> Plan ini self-contained: berisi keputusan yang sudah diambil, apa yang sudah selesai,
+> dan apa yang masih perlu dikerjakan. Bisa langsung dilanjut oleh siapapun tanpa konteks
+> chat sebelumnya — cukup baca file ini + git log untuk detail teknis.
 
 ---
 
-## A. RINGKASAN GAP HASIL AUDIT
+## 0. CARA MELANJUTKAN
 
-Tabel di bawah ini adalah temuan inti, urut dari paling kritis.
+1. Baca section **§1 KEPUTUSAN** — semua D1–D7 sudah diambil.
+2. Lihat section **§2 STATUS** — checklist apa yang sudah/belum jadi.
+3. Pilih item dari section **§3 BACKLOG**. Item paling atas = prioritas berikutnya.
+4. Setelah selesai, update checklist di §2 dan tandai item di §3.
+5. Branch: kerja langsung di `main` (pola yang dipakai sejauh ini). Commit message bahasa Inggris pendek.
 
-| #   | Area (RULES §)               | Gap                                                                                              | Severity |
-| --- | ---------------------------- | ------------------------------------------------------------------------------------------------ | -------- |
-| G1  | §4.7 Registration            | Tidak ada kolom `is_active` di tabel `users`. Pengurus baru langsung bisa login.                  | CRITICAL |
-| G2  | §4.1 Middleware              | `proxy.ts` hanya cek `session?.userId`, tidak enforce role per prefix path & tidak cek `is_active`. | CRITICAL |
-| G3  | §4.3 Validation chain        | Tidak ada `activity_scope` (UNIVERSITAS/FAKULTAS). Routing WR3 vs WD3 tidak dipisah.              | CRITICAL |
-| G4  | §4.4 Overlap detection       | `BLOCKING_SQL` di `lib/availability.ts` kurang status: `SUBMITTED`, `WAITING_SURAT`, `REVISION_REQUESTED` tidak diblok → potensi double booking. | CRITICAL |
-| G5  | §4.5 Priority scheduling     | Tidak ada `PRIORITY_LEVELS`, `activity_level`, `calculatePriorityScore`, `resolveConflict`, aging. 0% implementasi. | HIGH     |
-| G6  | §4.6 Notification dispatch   | `lib/notifications.ts` hanya tulis ke DB. Tidak ada WA (Baileys) dan Email (Nodemailer).         | HIGH     |
-| G7  | §4.9 Admin decision          | Hanya 3 dari 5 opsi (APPROVE/REJECT/REQUEST_REVISION). `OFFER_ALTERNATIVE` & `PENDING` tidak ada. | MEDIUM   |
-| G8  | §4.2 Status enum naming      | Reality: 12 status (`SUBMITTED`, `WAITING_*`, `REJECTED_BY_*`, `WAITING_SURAT`, `REVISION_REQUESTED`, ...). RULES: 8 status (`PENDING_*`). Perlu putuskan: align RULES ke reality atau sebaliknya. | DECISION |
-| G9  | §4.1 Role naming             | `PENGURUS` vs RULES `pengurus_ormawa`; `ADMIN_UNIT` vs `admin_biro`; `SUPER_ADMIN` vs `super_admin_it`. | DECISION |
-| G10 | §4.8 Bureau codes            | `BIRO_I/BIRO_IV` vs RULES `BIRO_1/BIRO_4`.                                                       | DECISION |
-| G11 | §9 Timezone                  | Tidak ada `date-fns-tz`. `lib/db.ts` pakai `timezone: 'local'`. Tidak eksplisit Asia/Jakarta.   | MEDIUM   |
-| G12 | §9 Pagination                | Semua query list tanpa `LIMIT/OFFSET`. Tabel `RequestTable` mengandalkan client-side full fetch. | MEDIUM   |
-| G13 | §10 Schema naming            | Field tabel camelCase (`createdAt`, `userId`) — RULES wajib `snake_case`. Soft delete (`deleted_at`) tidak ada. | DECISION |
-| G14 | §0 Stack                     | `mysql2`+`jose` vs RULES Prisma+NextAuth+Baileys+Nodemailer.                                     | DECISION |
-| G15 | §4.1 RBAC di action          | `requireRole(...)` ada (bagus). Tapi `getRequestsForRole` di `approvals.ts` tidak cek role pemanggil. | LOW      |
-| G16 | §0 Folder structure          | Flat `app/`, `components/`, `lib/`, `types/` di root. RULES: `src/features/<feature>/`.          | DECISION |
+Setup awal:
+```bash
+npm install
+# isi .env (lihat .env.example kalau ada, atau pola DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME)
+mysql -u root -p < database/schema.sql
+mysql -u root -p < database/migration_001_managing_unit.sql
+mysql -u root -p < database/migration_002_facility_blocks.sql
+mysql -u root -p < database/migration_003_user_logo.sql
+mysql -u root -p < database/migration_004_user_active_and_scope.sql
+mysql -u root -p < database/migration_005_activity_scope.sql
+mysql -u root -p < database/migration_006_admin_decision.sql
+npx tsx database/seed.ts            # 36 fasilitas, 21 user, 18 peminjaman dummy
+npm run dev
+```
 
-Total: **6 gap kritis/tinggi yang harus diperbaiki**, **6 keputusan desain** yang
-butuh kesepakatan, **4 perbaikan medium/low**.
+Akun demo (password semua: `password123`):
+- `pengurus@kampus.test` (PENGURUS)
+- `biro3@kampus.test` (BIRO_III)
+- `wr3@kampus.test` (WR3_WD3, scope UNIVERSITAS)
+- `wd3@kampus.test` (WR3_WD3, scope FAKULTAS)
+- `adminunit@kampus.test` (ADMIN_UNIT — masih monolit, BELUM di-split)
+- `superadmin@kampus.test`
 
----
-
-## B. KEPUTUSAN YANG PERLU DIAMBIL DULU (sebelum Fase Eksekusi)
-
-Beberapa gap di atas adalah **konflik antara RULES dan reality**. Tidak ada
-fase eksekusi yang aman tanpa keputusan ini lebih dulu, karena memilih satu
-arah mengubah scope perubahan secara drastis.
-
-### D1. Status enum: align ke mana? (G8)
-- **Opsi A (rekomendasi)**: pertahankan 12 status yang sudah jalan, update RULES §4.2 agar match.
-  Reality lebih granular (membedakan siapa yang reject, ada step surat, ada revision request).
-  Konsekuensi: hanya update RULES.md. Kode hampir tidak berubah.
-- **Opsi B**: paksa kode ke 8 status RULES. Konsekuensi: migrasi DB besar, kehilangan
-  metadata "rejected by whom", dan harus invent ulang konsep step surat.
-
-### D2. Role naming: align ke mana? (G9)
-- **Opsi A (rekomendasi)**: pertahankan nama saat ini (`PENGURUS`, `ADMIN_UNIT`, `SUPER_ADMIN`),
-  update RULES §4.1.
-- **Opsi B**: rename di DB enum + semua callsite. Berisiko miss-replace.
-
-### D3. Bureau codes: `BIRO_I` atau `BIRO_1`? (G10)
-- **Opsi A (rekomendasi)**: pertahankan `BIRO_I/BIRO_IV` (romawi) — konsisten dengan "Biro III", "WR3".
-- **Opsi B**: rename ke arab numeral seperti RULES.
-
-### D4. Schema naming: camelCase vs snake_case (G13)
-- **Opsi A (rekomendasi)**: pertahankan camelCase (sudah konsisten di seluruh kode).
-  Update RULES §10.
-- **Opsi B**: migrasi ke snake_case. Semua server action & query harus diupdate.
-  Risiko bug tinggi.
-
-### D5. Stack: tetap mysql2/jose, atau migrasi ke Prisma/NextAuth? (G14)
-- **Opsi A (rekomendasi untuk skripsi)**: tetap mysql2 + jose. Update RULES §0.
-  Stabil, sudah jalan, tidak menambah unknown.
-- **Opsi B**: migrasi ke Prisma + NextAuth. Mahal, butuh re-test semua flow.
-
-### D6. Folder structure: flat atau `src/features/*`? (G16)
-- **Opsi A (rekomendasi untuk skripsi)**: pertahankan flat. Update RULES §3.
-- **Opsi B**: migrasi struktur. Banyak import path berubah; lakukan setelah skripsi siap demo.
-
-### D7. WA + Email dispatch: implementasi atau cukup DB? (G6)
-- **Opsi A**: implementasi penuh Baileys.js + Nodemailer sesuai RULES §4.6.
-  Tambah ~2-3 hari kerja + setup session WA.
-- **Opsi B (rekomendasi jika waktu sempit)**: integrasi Nodemailer saja dulu (lebih mudah),
-  WA dijadikan TODO/skripsi extension.
-- **Opsi C**: pertahankan DB-only dengan notifikasi in-app, update RULES §4.6.
-
-> **TINDAKAN**: Jawab D1–D7 sebelum Fase 1 mulai. Jawaban menentukan apakah
-> "perbaikan" berupa kode (Opsi B) atau RULES (Opsi A).
+Akun pengurus organisasi (semua bisa login): `damar.wicaksono@students.ukdw.ac.id`,
+`naomi.hartanto@students.ukdw.ac.id`, `rafael.limanto@students.ukdw.ac.id`, dst — lihat `database/seed.ts` `ORGS[]` untuk daftar lengkap 15 LK/OK UKDW.
 
 ---
 
-## C. FASE EKSEKUSI (LOGIC DULU)
+## 1. KEPUTUSAN YANG SUDAH DIAMBIL
 
-### Fase 1 — Stop the Bleeding: Gap Kritis (G1, G2, G4)
+| ID  | Keputusan | Pilihan |
+|-----|-----------|---------|
+| D1  | Status enum align ke mana? | **Opsi A** — pertahankan 12 status reality, RULES.md yang menyesuaikan |
+| D2  | Role naming? | **Opsi A** — pertahankan `PENGURUS / BIRO_III / WR3_WD3 / ADMIN_UNIT / SUPER_ADMIN` |
+| D3  | Bureau code? | **Opsi A** — pertahankan `BIRO_I / BIRO_IV` (romawi) |
+| D4  | Schema naming? | **Opsi A** — pertahankan camelCase di seluruh DB |
+| D5  | Stack? | **Opsi A** — pertahankan `mysql2 + jose` (tidak migrasi ke Prisma/NextAuth) |
+| D6  | Folder structure? | **Opsi A** — pertahankan flat (tidak migrasi ke `src/features/*`) |
+| D7  | Notification dispatch? | **Skip dulu** — implementasi DB-only sudah ada, WA/Email ditunda |
+| D8 *(baru)* | Admin Unit jadi 5 role terpisah? | **Opsi B** — 5 role baru: `ADMIN_BIRO_I, ADMIN_BIRO_IV, ADMIN_PPLK, ADMIN_KRT, ADMIN_LPAIP` (belum dieksekusi, lihat §3) |
+| D9 *(baru)* | Form field per-unit? | **Ya, perlu** — tiap unit punya field set berbeda (LPAIP tidak perlu kapasitas/peserta, KRT vehicle perlu tujuan rute) |
+| D10 *(baru)* | OFFER_ALTERNATIVE model | Pakai status `REVISION_REQUESTED` + note terstruktur |
+| D11 *(baru)* | PENDING model | Status baru `ON_HOLD` + tombol Resume |
 
-**Tujuan**: Menutup celah keamanan & data inkonsisten yang aktif sekarang.
-
-1. **G1 — Aktivasi akun (`is_active`)**
-   - Migration 005: `ALTER TABLE users ADD COLUMN isActive BOOLEAN NOT NULL DEFAULT FALSE AFTER role;`
-     - Existing user (super admin, biro): set `isActive = TRUE` lewat seed/manual.
-     - Pengurus baru: default `FALSE`.
-   - Update `types/index.ts` (`User.isActive: boolean`).
-   - `app/actions/auth.ts` → `login()`: tolak login bila `!user.isActive`.
-   - `app/actions/auth.ts` → `registerPengurus()`: tetap insert, tapi tampilkan
-     pesan "Menunggu aktivasi SuperAdmin" di halaman register success.
-   - SuperAdmin dashboard: tambah panel "Akun menunggu aktivasi" dengan tombol Activate
-     (Server Action `activateUser(userId)` dengan `requireRole('SUPER_ADMIN')`).
-   - Notifikasi ke SuperAdmin saat ada user baru register.
-
-2. **G2 — Middleware role-based**
-   - `proxy.ts` saat ini hanya cek login. Tambahkan:
-     - Cek `session.isActive` (perlu disuntik ke session payload — update `createSession`).
-     - Cek prefix path vs role:
-       - `/dashboard/pengurus/**` → `PENGURUS`
-       - `/dashboard/biro-iii/**` → `BIRO_III`
-       - `/dashboard/wr3-wd3/**` → `WR3_WD3`
-       - `/dashboard/admin-unit/**` → `ADMIN_UNIT`
-       - `/dashboard/super-admin/**` → `SUPER_ADMIN` (route belum ada, tambah saat
-         implementasi panel aktivasi user).
-     - Mismatch → redirect ke `dashboardPathForRole(session.role)`.
-   - Catatan: `verifySession`/`requireRole` di server action **tetap dipertahankan**
-     sebagai defense-in-depth (middleware bisa dibypass di edge cases).
-
-3. **G4 — Overlap detection status filter**
-   - `lib/availability.ts`: ganti `BLOCKING_SQL` jadi:
-     ```ts
-     const BLOCKING_SQL = "('APPROVED','SUBMITTED','WAITING_BIRO_III','WAITING_WR3_WD3','WAITING_SURAT','WAITING_ADMIN_UNIT','REVISION_REQUESTED')"
-     ```
-   - Sinkronkan `BLOCKING_STATUSES` di `types/index.ts` dengan list yang sama.
-   - Test manual: dua pengurus submit overlap → pengurus kedua harus ditolak
-     bahkan saat pengurus pertama masih di status `WAITING_SURAT`.
-
-**Kriteria selesai Fase 1**:
-- Pengurus baru tidak bisa login sampai diaktivasi.
-- User dengan role salah tidak bisa akses path role lain (bukan hanya redirect
-  ke `/dashboard`, melainkan ke dashboard rolenya sendiri).
-- Tidak ada celah double booking lewat status transisi `WAITING_SURAT` /
-  `REVISION_REQUESTED`.
-- `npm run build` sukses, manual smoke test pass.
+> **Penting**: RULES.md belum di-update untuk mencerminkan D1–D4. Itu tugas tersendiri (PR `docs(rules): align to reality`).
 
 ---
 
-### Fase 2 — Validation Chain & Activity Scope (G3)
+## 2. STATUS — APA YANG SUDAH SELESAI
 
-**Tujuan**: implementasi routing WR3 vs WD3 berdasarkan lingkup kegiatan.
+### Backend / Logic
 
-1. Migration 006: tambah kolom ke `facility_requests`:
-   ```sql
-   ALTER TABLE facility_requests
-     ADD COLUMN activityScope ENUM('UNIVERSITAS','FAKULTAS') NOT NULL DEFAULT 'UNIVERSITAS' AFTER description;
-   ```
-2. `types/index.ts`: tambah `ActivityScope` type + field di `FacilityRequest`.
-3. `lib/validations.ts`: tambah `activityScope` di `FacilityRequestSchema`.
-4. `components/forms/RequestForm.tsx`: tambah field radio/select "Lingkup Kegiatan".
-5. Pisahkan role tahap 2 di DB (opsional, tergantung D2):
-   - **Pertahankan satu role `WR3_WD3`** tapi tambah kolom `userScope ENUM('UNIVERSITAS','FAKULTAS')` di `users` agar WR3 (UNIVERSITAS) dan WD3 (FAKULTAS) bisa dibedakan saat assign approver.
-   - ATAU pecah jadi dua role baru `WR3` dan `WD3`. Pilih satu, dokumentasikan.
-6. Update `approveByBiroIII` → routing ke role yang sesuai berdasarkan `activityScope`.
-7. Update notifikasi target: hanya WR3 (UNIVERSITAS) atau WD3 (FAKULTAS), tidak broadcast ke semua.
-8. (Opsional, sesuai RULES) buat tabel `validation_chains` untuk audit trail step routing.
+- [x] **G1 Activation** (`migration_004`): `users.isActive`, login diblok kalau false, panel SuperAdmin `/dashboard/super-admin/users` untuk activate, notifikasi ke SuperAdmin saat registrasi baru.
+- [x] **G2 Middleware role enforcement** (`proxy.ts`): cek role per path prefix, redirect ke dashboard role sendiri kalau mismatch, force logout kalau `!isActive`. Session payload bawa `isActive` + `userScope`.
+- [x] **G3 Activity scope routing** (`migration_005`): `facility_requests.activityScope`, `users.userScope`. `approveByBiroIII` route ke WR3 vs WD3 berdasarkan scope.
+- [x] **G4 Overlap detection fix** (`lib/availability.ts`): BLOCKING_SQL termasuk `SUBMITTED`, `WAITING_*`, `REVISION_REQUESTED`, `ON_HOLD`.
+- [x] **G7 Admin decision lengkap** (`migration_006`): server actions `offerAlternativeByAdminUnit`, `holdByAdminUnit`, `resumeByAdminUnit`. Status `ON_HOLD` + 3 LogAction baru (`OFFER_ALTERNATIVE / HOLD / RESUME`).
+- [x] **G11 Timezone helper** (`utils/date.ts`): `formatWIB`, `formatWIBDate`, `formatWIBTime` dengan `Asia/Jakarta`.
+- [x] **G12 Pagination**: `getRequestsForRole` accept `{ page, pageSize }` → `{ items, total, page, pageSize }`. Komponen `Pagination` dengan prop `paramName` (untuk 2 list di 1 halaman).
+- [x] **Seed dummy data**: 36 fasilitas, 15 org LK/OK UKDW + 6 user demo, 18 peminjaman tersebar -12 hingga +40 hari, distribusi status realistis, approval log trail per status.
 
-**Kriteria selesai**:
-- Pengajuan UNIVERSITAS → masuk antrian WR3 saja.
-- Pengajuan FAKULTAS → masuk antrian WD3 saja.
-- Notifikasi tidak bocor ke role yang tidak relevan.
+### UI (Pengurus role saja)
 
----
-
-### Fase 3 — Notification Dispatch Lengkap (G6, sesuai D7)
-
-**Tujuan**: penuhi RULES §4.6 sesuai keputusan D7.
-
-#### Jika D7 = Opsi A (WA + Email penuh)
-1. `npm i baileys @whiskeysockets/baileys nodemailer`
-2. `lib/baileys.ts`: client + session persistence di `./wa-session` (sudah di `.gitignore`).
-3. `lib/mailer.ts`: nodemailer transport pakai env `NODEMAILER_USER`, `NODEMAILER_PASS`.
-4. Wrap `createNotification`/`createNotificationForRole` → trigger juga `sendWhatsApp`
-   + `sendEmail` via `Promise.allSettled`.
-5. Builder pesan: 1 fungsi `buildStatusMessage(req, status)` agar konsisten lintas kanal.
-
-#### Jika D7 = Opsi B (Email only)
-1. `npm i nodemailer @types/nodemailer`
-2. `lib/mailer.ts` saja. WA dijadikan TODO dengan komentar di `lib/notifications.ts`.
-
-#### Jika D7 = Opsi C (DB only)
-1. Update RULES §4.6 agar tidak mewajibkan WA/Email.
-2. Pastikan UI notifikasi in-app (badge bell, halaman notif) sudah lengkap.
-
-**Kriteria selesai**: setiap status change men-trigger semua kanal yang dipilih,
-kegagalan satu kanal tidak menggagalkan perubahan status (pakai `Promise.allSettled`).
+- [x] **Design tokens** (`globals.css`): palette UKDW green, neutrals, status colors, accent gold, radius, shadow.
+- [x] **shadcn-style primitives** (`components/ui/*`): Button, Card, Dialog, DropdownMenu, Field, Tooltip, Pagination, StatusBadge, Toaster (sonner), PageTransition (framer-motion).
+- [x] **Sidebar** (`components/dashboard/Sidebar.tsx`): brand FASKO, section label per-role, menu items dengan unread badge, profile card pinned bottom + logout. (Menu "Kalender Fasilitas" sudah dihapus, route `/dashboard/pengurus/calendar` masih hidup sebagai dead code.)
+- [x] **Topbar** (`components/dashboard/Navbar.tsx`): breadcrumb auto-generate dari pathname + bell notifikasi. CTA "+ Pinjam" dihapus (Pinjam per-fasilitas saja).
+- [x] **Dashboard Pengurus** (`app/dashboard/pengurus/page.tsx`): hero greeting hijau, 4 stat cards, 2-col aktif/recent, grid fasilitas populer.
+- [x] **Status Peminjaman list** (`app/dashboard/pengurus/requests/page.tsx`): 6 tab pills (Semua/Menunggu/Disetujui/Perlu Revisi/Ditolak/Selesai), tabel dengan inline expansion banner (alasan tolak / note revisi / tip disetujui).
+- [x] **Status Peminjaman detail** (`app/dashboard/pengurus/requests/[id]/page.tsx`): hero hijau + status banner kontekstual + section Jadwal/Detail + timeline approval.
+- [x] **Form Peminjaman** (`components/forms/RequestForm.tsx`): 2-kolom dengan summary panel kanan sticky. Field sekarang: Fasilitas (picker) → Tanggal mulai + Tanggal selesai (custom DatePicker) → Jam mulai + Jam selesai → Nama kegiatan → Jumlah peserta + Penanggung jawab → Org + Lingkup → Dokumen pendukung. Tujuan peminjaman jadi Select 10 opsi. Hidden inputs `startDateTime`/`endDateTime` compose dari 4 field. Dual mode: `lockedFacility` (dari card click) atau dropdown picker.
+- [x] **FacilityPicker** (`components/forms/FacilityPicker.tsx`): inline popover (bukan modal), 5 unit accordion default expanded, search realtime, aksen warna per unit (Biro I=sky, Biro IV=violet, PPLK=emerald, KRT=amber, LPAIP=rose), bar samping berwarna sebagai pembatas.
+- [x] **DatePicker** (`components/forms/DatePicker.tsx`): popover custom, header gradient hijau, 4 navigasi (« ‹ › »), grid 6 baris fix, hari ini badge, Minggu rose, footer "Hari ini" / "Tutup", support `min` prop.
+- [x] **Daftar Fasilitas** (`app/dashboard/facilities/page.tsx`): accordion 5 unit (default open), search `?q=`, kartu fasilitas dengan gradient header + tombol Pinjam per kartu.
+- [x] **Detail Fasilitas** (`app/dashboard/facilities/[id]/page.tsx`): hero hijau gradient, 2-kolom (deskripsi + aturan + 4-stat / kalender + jadwal mendatang + tip). Kalender pakai `FacilityAvailabilityCalendar` (lihat di bawah).
+- [x] **FacilityAvailabilityCalendar** (`components/dashboard/FacilityAvailabilityCalendar.tsx`): navigasi bulan, hover (radix tooltip) memunculkan popup floating per tanggal berisi nama hari + tanggal + holiday badge + list booking (org/jam/status). Holiday 2026 ID hardcoded (13 hari).
+- [x] **Notifikasi** (`app/dashboard/notifications/page.tsx`): 2-kolom (saringan sidebar + list), filter Semua/Belum dibaca/Menunggu/Disetujui/Jadwal Ulang/Ditolak dengan count badge, list dengan icon tinted + pill + "BARU" badge + relative timestamp.
 
 ---
 
-### Fase 4 — Priority Scheduling (G5)
+## 3. BACKLOG — APA YANG BELUM (urut prioritas)
 
-**Tujuan**: implementasi RULES §4.5 (priority + aging + FCFS).
+### Prioritas 1 — Split Admin Unit jadi 5 role (Phase 2 dari diskusi terakhir)
 
-> Catatan: priority scheduling bermakna penuh hanya bila ada **konflik**.
-> Sistem saat ini menolak overlap di awal — jadi konflik praktis tidak terjadi.
-> Diskusikan dulu: apakah priority dipakai untuk **antrian validator**
-> (decide siapa yang dilihat dulu) atau untuk **tiebreaker overlap**
-> (mengganti penolakan jadi seleksi)?
+> **Keputusan**: D8 = Opsi B (5 role baru, bukan 1 role + kolom managingUnit)
 
-1. Migration 007:
-   ```sql
-   ALTER TABLE facility_requests
-     ADD COLUMN activityLevel ENUM('AKADEMIK','INSTITUSIONAL','KEMAHASISWAAN') NOT NULL DEFAULT 'KEMAHASISWAAN' AFTER activityScope;
-   ```
-2. `utils/priority.ts` (file baru):
-   ```ts
-   export const PRIORITY_LEVELS = { AKADEMIK: 3, INSTITUSIONAL: 2, KEMAHASISWAAN: 1 } as const;
-   export const AGING_RATE = 0.1;
-   export function calculatePriorityScore(req: { activityLevel: keyof typeof PRIORITY_LEVELS; submittedAt: Date }): number { ... }
-   export function resolveConflict(a, b) { ... }
-   ```
-3. Konsumsi:
-   - Ordering antrian validator: `ORDER BY priority_score DESC, submittedAt ASC`.
-   - (Opsi konflik): saat dua submission masuk hampir bersamaan, panggil `resolveConflict`.
-4. Form pengajuan: pengurus pilih `activityLevel` (default KEMAHASISWAAN, tidak bisa pilih AKADEMIK kecuali ada flag/role).
+Subtask:
+- [ ] **Migration 007** — extend `users.role` enum: tambah `ADMIN_BIRO_I`, `ADMIN_BIRO_IV`, `ADMIN_PPLK`, `ADMIN_KRT`, `ADMIN_LPAIP`. Pertahankan `ADMIN_UNIT` lama untuk migrasi data, atau rename existing rows ke salah satu role baru.
+- [ ] **types/index.ts** — update `Role` union.
+- [ ] **proxy.ts** — recognize 5 role baru, semua tetap akses prefix `/dashboard/admin-unit/**` (atau dipecah jadi sub-path per unit, terserah implementor).
+- [ ] **lib/auth.ts** — `dashboardPathForRole` map 5 role baru ke `/dashboard/admin-unit`.
+- [ ] **components/dashboard/Sidebar.tsx** — MENUS config: 5 role baru pakai menu yang sama dengan ADMIN_UNIT.
+- [ ] **app/actions/approvals.ts** — semua server action admin (`approveByAdminUnit`, `rejectByAdminUnit`, `requestRevisionByAdminUnit`, `offerAlternativeByAdminUnit`, `holdByAdminUnit`, `resumeByAdminUnit`) → `requireRole` accept 5 role + filter request berdasarkan `facility.managingUnit === ADMIN_ROLE_TO_UNIT[session.role]`.
+- [ ] **`getRequestsForRole`** — filter request supaya admin role hanya lihat request yang `f.managingUnit` sesuai unit-nya.
+- [ ] **Notification routing** — saat WR3/WD3 approve, `createNotificationForRole('ADMIN_UNIT', ...)` → ganti jadi `createNotificationForRole(adminRoleByUnit[facility.managingUnit], ...)`.
+- [ ] **Seed** — tambah 5 user admin per unit: `adminbirog1@kampus.test`, `adminbiroiv@kampus.test`, `adminpplk@kampus.test`, `adminkrt@kampus.test`, `adminlpaip@kampus.test`. Hapus `adminunit@kampus.test` lama atau jadikan `ADMIN_BIRO_IV` (paling banyak fasilitas).
 
-**Kriteria selesai**:
-- Test unit `utils/priority.ts` lulus (kasus aging, FCFS tiebreaker).
-- Antrian biro III/WR3/WD3 menampilkan urut berdasar priority score, bukan
-  hanya createdAt.
+### Prioritas 2 — Form per-unit (D9)
 
----
+> Tiap unit punya kebutuhan field berbeda. Contoh:
+> - LPAIP (kamera/multimedia): tidak perlu kapasitas/peserta, perlu lokasi shoot, durasi
+> - KRT kendaraan: perlu tujuan rute, kapasitas penumpang, supir
+> - BIRO_I/IV (ruangan): kapasitas wajib
+> - PPLK lab: jumlah peserta wajib
 
-### Fase 5 — Admin Decision Lengkap (G7)
+Subtask:
+- [ ] Definisikan `FIELD_CONFIG_BY_UNIT` di file baru (mis. `lib/form-config.ts`):
+  - per ManagingUnit: list field yang shown / required / hidden
+  - Mungkin perlu nambah kolom DB: `routeDestination`, `driverName`, dll — putuskan lagi saat eksekusi.
+- [ ] Refactor `RequestForm.tsx` untuk pakai config (conditional render field).
+- [ ] Update `lib/validations.ts` agar field opsional per unit.
+- [ ] (Opsional) Migration tambah kolom DB baru kalau dibutuhkan.
 
-**Tujuan**: tambah dua opsi yang hilang.
+### Prioritas 3 — Fase 4 RULES: Priority Scheduling (G5)
 
-1. **`OFFER_ALTERNATIVE`**: admin pilih facility/slot lain.
-   - Update `LogAction` enum + `approval_logs.action` enum.
-   - Server action `offerAlternativeByAdminUnit(requestId, alternativeFacilityId, alternativeStart, alternativeEnd, note)`.
-   - Status baru? RULES tidak jelaskan. Opsi:
-     - Set status `REVISION_REQUESTED` dengan note alternatif → pengurus accept/decline.
-     - ATAU buat status `ALTERNATIVE_OFFERED` baru.
-   - **Keputusan butuh diambil sebelum eksekusi.**
-2. **`PENDING`**: admin tahan keputusan.
-   - Cukup tombol "Tunda" yang **tidak** ubah status (tetap `WAITING_ADMIN_UNIT`)
-     tapi tulis log `PENDING` dengan reminder time.
-   - Atau status baru `ON_HOLD`.
+Lihat Plan.md revisi 1 §C-Fase 4 (sudah ter-include di history). Ringkas:
+- [ ] Migration 008 — `facility_requests.activityLevel` enum.
+- [ ] `utils/priority.ts` — `PRIORITY_LEVELS`, `calculatePriorityScore`, aging, `resolveConflict`.
+- [ ] Antrian validator order by priority score.
+- [ ] Form pengurus pilih `activityLevel`.
 
-**Kriteria selesai**:
-- UI admin punya 5 tombol keputusan.
-- Tiap keputusan ter-log di `approval_logs` dengan action sesuai.
+> Catatan: priority bermakna penuh hanya jika ada konflik. Tentukan dulu apakah dipakai untuk ordering antrian atau tiebreaker overlap.
 
----
+### Prioritas 4 — Fase 6 Notification Dispatch (G6, D7)
 
-### Fase 6 — Timezone, Pagination, Soft Delete (G11, G12)
+Saat ini DB-only. Kalau mau lengkap:
+- [ ] Pasang Baileys + Nodemailer
+- [ ] Wrap `createNotification*` jadi trigger WA + Email via `Promise.allSettled`
+- [ ] Builder `buildStatusMessage(req, status)` agar konsisten lintas kanal
 
-1. **Timezone (G11)**
-   - `npm i date-fns date-fns-tz`
-   - `utils/date.ts`: helper `formatWIB`, `toUtcFromWIB`, `nowWIB`.
-   - Tampilan: semua format datetime via helper, default `Asia/Jakarta`.
-   - Storage: tetap MySQL DATETIME (server bebas timezone, helper handle konversi).
-   - Optional: `pool` config `timezone: '+07:00'` agar konsisten.
+### Prioritas 5 — Fase 7 UI sisa (role non-Pengurus)
 
-2. **Pagination (G12)**
-   - Refactor query list (`getMyRequests`, `getRequestsForRole`, listing facility):
-     - Terima `{ page, pageSize = 10 }`.
-     - Return `{ items, total, page, pageSize }`.
-   - Komponen `RequestTable`: konsumsi pagination, render kontrol page nav.
-   - URL params: `?page=2` agar bisa di-share.
+UI Pengurus sudah selesai. Sisa:
+- [ ] Redesign halaman BIRO_III (dashboard, antrian, detail)
+- [ ] Redesign halaman WR3_WD3 (dashboard, antrian, detail)
+- [ ] Redesign halaman ADMIN_UNIT (dashboard, requests, blocks, facilities CRUD) — setelah Prioritas 1 (role split) selesai
+- [ ] Redesign halaman SUPER_ADMIN (users management)
 
-3. **Soft delete (G13 partial — bisa skip kalau D4 = Opsi A)**
-   - Jika diputuskan diperlukan: tambah `deletedAt` di tabel yang relevan
-     (`facilities`, `facility_requests`?).
+Pola visual sudah ditetapkan oleh Pengurus side, tinggal apply ke role lain.
 
-**Kriteria selesai**: semua tampilan datetime konsisten WIB; tabel pakai
-server-side pagination 10/page.
+### Prioritas 6 — Cleanup & Production
+
+- [ ] Update **RULES.md** untuk mencerminkan D1–D4 (commit terpisah `docs(rules): align to reality`)
+- [ ] Hapus dead route `/dashboard/pengurus/calendar` (folder + files)
+- [ ] Migrasi `mysql2` Promise mode untuk MariaDB compat (sudah jalan, monitoring saja)
+- [ ] Audit accessibility (focus rings, ARIA, keyboard nav)
+- [ ] Responsive pass (mobile breakpoint)
+- [ ] Production checklist (RULES §11 — lihat versi update)
 
 ---
 
-### Fase 7 — Audit Pasca-Logic + UI Pass
+## 4. PETA FILE PENTING
 
-Setelah G1–G15 ditangani, **baru** lanjut ke perbaikan UI/design system.
-Re-ambil 7 sub-fase dari Plan.md sebelumnya:
+```
+app/
+  actions/           → server actions (auth, approvals, requests, notifications, users)
+  dashboard/
+    layout.tsx       → wraps Sidebar + Navbar
+    page.tsx         → router dashboard berdasarkan role
+    pengurus/        → halaman pengurus (UI sudah final)
+    biro-iii/        → halaman biro III (UI masih versi lama)
+    wr3-wd3/         → halaman WR3/WD3 (UI masih versi lama)
+    admin-unit/      → halaman admin unit (UI versi lama, akan di-split per role di Prioritas 1)
+    super-admin/     → halaman super admin
+    facilities/      → daftar + detail fasilitas (UI final)
+    notifications/   → notifikasi (UI final)
+  surat/[id]/        → halaman surat persetujuan (PDF-able)
 
-- 7.1 — Audit hex hardcode & token (read-only).
-- 7.2 — Hardening `components/ui/*`.
-- 7.3 — Sidebar / Topbar / Dashboard layout.
-- 7.4 — Empat state wajib (loading/empty/error/success).
-- 7.5 — Form / Tabel / Kalender / Timeline component specs.
-- 7.6 — Aksesibilitas & responsive pass.
-- 7.7 — Production-ready checklist (RULES §11).
+components/
+  dashboard/
+    Sidebar.tsx                    → menu navigasi + profile
+    Navbar.tsx                     → breadcrumb + bell
+    Timeline.tsx                   → riwayat approval
+    NotificationList.tsx           → row notifikasi (legacy, sudah tidak dipakai di list page)
+    FacilityCalendar.tsx           → kalender admin/global (legacy)
+    FacilityAvailabilityCalendar   → kalender mini per-fasilitas dengan hover popup
+    AdminUnitActions.tsx           → 5 tombol keputusan admin (approve/reject/revision/offer/hold/resume)
+    ApprovalActions.tsx            → 3 tombol generic untuk biro III & WR3/WD3
+    ApproverRequestDetail.tsx      → layout detail untuk validator
+    RequestTable.tsx               → tabel request generic (validator)
+  forms/
+    RequestForm.tsx                → form pengajuan (final layout)
+    FacilityPicker.tsx             → picker inline dengan accordion per unit
+    DatePicker.tsx                 → date picker custom
+  ui/                              → primitives shadcn-style
 
-Detail tiap sub-fase identik dengan Plan.md revisi 0. Tidak dimuat ulang di sini
-agar dokumen tidak duplikatif — lihat history git untuk referensi.
+lib/
+  db.ts             → mysql2 pool helpers (query, queryOne, execute)
+  auth.ts           → verifySession, requireRole, getCurrentUser, dashboardPathForRole
+  session.ts        → jose JWT session payload
+  validations.ts    → Zod schemas
+  availability.ts   → overlap check (BLOCKING_SQL termasuk ON_HOLD)
+  notifications.ts  → DB notifications + per-role broadcast
+  request-code.ts   → kode + formatter datetime
+
+database/
+  schema.sql            → schema utama (latest dengan ON_HOLD + admin actions)
+  migration_001..006    → migrations urut
+  seed.ts               → seed 36 fasilitas + 21 user + 18 request
+
+utils/
+  date.ts           → formatWIB, formatWIBDate, formatWIBTime, nowWIB
+
+proxy.ts            → middleware Next.js (role enforcement)
+types/index.ts      → semua type DB + Role/RequestStatus/LogAction unions
+```
 
 ---
 
-## D. URUTAN PR YANG DISARANKAN
+## 5. KONVENSI & CATATAN
 
-Satu PR = satu Fase atau lebih kecil. Tidak boleh campur:
-
-1. **PR-1**: Migration 005 + `is_active` flow + SuperAdmin activate panel (G1).
-2. **PR-2**: Middleware role enforcement (G2). Depends on PR-1.
-3. **PR-3**: Overlap status filter fix (G4). Standalone, prioritas tinggi.
-4. **PR-4**: Migration 006 + activity scope + WR3/WD3 routing (G3).
-5. **PR-5**: Notification dispatch sesuai keputusan D7 (G6).
-6. **PR-6**: Priority scheduling (G5). Bisa pararel dengan PR-4 jika tim memungkinkan.
-7. **PR-7**: Admin decision OFFER_ALTERNATIVE + PENDING (G7).
-8. **PR-8**: Timezone + pagination (G11, G12).
-9. **PR-9..n**: UI/design system per sub-fase 7.x.
+- Migration SQL idempotent atau punya catatan urutan — gunakan `migration_00N_<deskripsi>.sql`.
+- Naming: file `kebab-case`, komponen `PascalCase`, types `PascalCase`, server actions `camelCase`.
+- Edit langsung di main branch (pola tim saat ini). Commit message bahasa Inggris pendek.
+- `npx tsc --noEmit` wajib bersih sebelum commit.
+- Tambah dummy data lebih banyak via `seed.ts`, jangan via SQL manual.
+- Jangan pakai timezone `local`; storage MySQL DATETIME naive, helper `utils/date.ts` handle ke WIB.
+- `lockedFacility` dari form Pengurus diambil dari `?facility=ID`. Kalau tidak ada → picker accordion muncul.
+- Holiday list 2026 hardcoded di `FacilityAvailabilityCalendar.tsx`. Update saat ganti tahun.
 
 ---
 
-## E. APA YANG TIDAK DIKERJAKAN (Sengaja)
+## 6. HISTORI REVISI
 
-- **Migrasi ke Prisma/NextAuth** (D5): tidak dijadwal sampai user pilih Opsi B.
-- **Migrasi ke `src/features/*`** (D6): tidak dijadwal sampai user pilih Opsi B.
-- **Rename role/bureau/status enum** (D1–D3): tidak dijadwal sampai keputusan diambil.
-  Default rekomendasi: pertahankan reality, update RULES.md.
-
----
-
-## F. CATATAN EKSEKUSI
-
-- Sebelum mulai PR-1, **putuskan D1–D7 dulu**. Tanpa itu beberapa fase ambigu.
-- Setiap migration SQL **wajib idempotent atau punya catatan urutan jalannya**.
-  File: `database/migration_00X_<name>.sql` mengikuti pola eksisting.
-- Setiap perubahan server action: tambah unit test bila ada logic non-trivial
-  (overlap, priority, routing). Skripsi membutuhkan Black Box Testing 19 FR — gunakan
-  itu sebagai test charter.
-- Update RULES.md di PR terpisah (`docs(rules): align ... to reality`) setelah
-  semua keputusan D1–D7 diambil.
+- **Revisi 0** (2026-05-17) — Plan awal UI design system saja.
+- **Revisi 1** (2026-05-18) — Audit logic gap G1–G16. 6 keputusan D1–D7.
+- **Revisi 2** (2026-05-19) — Semua keputusan D1–D11 final. Fase 1–2 + Fase 5 + Fase 6 sebagian + UI Pengurus lengkap. Tambah Prioritas split admin role (D8).

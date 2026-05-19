@@ -2,7 +2,7 @@ import 'server-only';
 import { query, type SqlParam } from '@/lib/db';
 import type { Facility, FacilityBlock, FacilityRequest } from '@/types';
 
-const BLOCKING_SQL = "('APPROVED','SUBMITTED','WAITING_BIRO_III','WAITING_WR3_WD3','WAITING_ADMIN_UNIT','REVISION_REQUESTED')";
+const BLOCKING_SQL = "('APPROVED','SUBMITTED','WAITING_BIRO_III','WAITING_WR3_WD3','WAITING_ADMIN_UNIT','REVISION_REQUESTED','ON_HOLD')";
 
 export async function findOverlap(
   facilityId: number,

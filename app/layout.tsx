@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="id" className={`${inter.variable} ${jetbrains.variable}`}>
-      <body className="min-h-screen bg-[var(--neutral-50)] text-[var(--neutral-900)] antialiased">
+      <body className="min-h-screen bg-[var(--neutral-50)] text-[var(--neutral-900)] antialiased" suppressHydrationWarning>
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
         <Toaster />
       </body>

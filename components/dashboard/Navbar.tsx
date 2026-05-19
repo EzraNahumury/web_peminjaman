@@ -1,45 +1,65 @@
 'use client';
 import Link from 'next/link';
-import { useTransition } from 'react';
-import { Bell, LogOut, User, ChevronDown, Building2 } from 'lucide-react';
-import { logout } from '@/app/actions/auth';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/DropdownMenu';
+import { usePathname } from 'next/navigation';
+import { Bell, ChevronRight } from 'lucide-react';
+import type { Role } from '@/types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 
-const ROLE_LABEL: Record<string, string> = {
-  PENGURUS: 'Pengurus LK/OK',
-  BIRO_III: 'Biro III',
-  WR3_WD3: 'WR3 / WD3',
-  ADMIN_UNIT: 'Admin Biro/Unit',
-  SUPER_ADMIN: 'Super Admin',
+const SEGMENT_LABEL: Record<string, string> = {
+  dashboard: 'FASKO',
+  pengurus: 'Beranda',
+  'biro-iii': 'Beranda',
+  'wr3-wd3': 'Beranda',
+  'admin-unit': 'Beranda',
+  'super-admin': 'Super Admin',
+  facilities: 'Daftar Fasilitas',
+  requests: 'Status Peminjaman',
+  calendar: 'Kalender Fasilitas',
+  notifications: 'Notifikasi',
+  profile: 'Profil',
+  new: 'Baru',
+  edit: 'Edit',
+  blocks: 'Blokir Jadwal',
+  users: 'Manajemen User',
 };
 
-export function Navbar({ name, role, unread }: { name: string; role: string; unread: number }) {
-  const initials = name
-    .split(' ')
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-  const [, startLogout] = useTransition();
+function buildBreadcrumb(path: string): { label: string; href: string | null }[] {
+  const parts = path.split('/').filter(Boolean);
+  const crumbs: { label: string; href: string | null }[] = [];
+  let acc = '';
+  for (let i = 0; i < parts.length; i++) {
+    acc += '/' + parts[i];
+    const seg = parts[i];
+    const label =
+      SEGMENT_LABEL[seg] ||
+      (/^\d+$/.test(seg) || /^[a-f0-9-]{8,}$/i.test(seg) ? 'Detail' : seg.replace(/-/g, ' '));
+    const isLast = i === parts.length - 1;
+    crumbs.push({ label, href: isLast ? null : acc });
+  }
+  // Drop the auto-generated role segment when it duplicates "Beranda"
+  return crumbs;
+}
+
+export function Navbar({ unread }: { role: Role; unread: number }) {
+  const path = usePathname() || '/';
+  const crumbs = buildBreadcrumb(path);
 
   return (
-    <header className="sticky top-0 z-30 flex h-[60px] items-center justify-between border-b border-[var(--neutral-200)] bg-white/85 px-6 backdrop-blur supports-[backdrop-filter]:bg-white/70">
-      <div className="flex items-center gap-2 text-sm text-[var(--neutral-500)]">
-        <Link href="/dashboard" className="flex items-center gap-1.5 font-medium text-[var(--neutral-700)] hover:text-[var(--neutral-900)]">
-          <Building2 className="h-4 w-4 text-[var(--primary-700)]" />
-          FASKO
-        </Link>
-        <span className="text-[var(--neutral-300)]">/</span>
-        <span className="font-medium text-[var(--neutral-900)]">{ROLE_LABEL[role] || role}</span>
-      </div>
+    <header className="sticky top-0 z-30 flex h-[60px] items-center justify-between gap-4 border-b border-[var(--neutral-200)] bg-white/85 px-6 backdrop-blur supports-[backdrop-filter]:bg-white/70 lg:px-10">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px]">
+        {crumbs.map((c, i) => (
+          <span key={i} className="flex min-w-0 items-center gap-1.5">
+            {i > 0 && <ChevronRight size={13} className="text-[var(--neutral-300)]" />}
+            {c.href ? (
+              <Link href={c.href} className="truncate text-[var(--neutral-500)] hover:text-[var(--neutral-800)]">
+                {c.label}
+              </Link>
+            ) : (
+              <span className="truncate font-semibold text-[var(--neutral-900)]">{c.label}</span>
+            )}
+          </span>
+        ))}
+      </nav>
 
       <div className="flex items-center gap-2">
         <Tooltip>
@@ -51,68 +71,12 @@ export function Navbar({ name, role, unread }: { name: string; role: string; unr
             >
               <Bell className="h-4 w-4" />
               {unread > 0 && (
-                <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--status-rejected-fg)] px-1 text-[10px] font-semibold text-white ring-2 ring-white">
-                  {unread > 99 ? '99+' : unread}
-                </span>
+                <span className="absolute -right-1 -top-1 inline-flex h-2.5 w-2.5 rounded-full bg-[var(--status-rejected-fg)] ring-2 ring-white" />
               )}
             </Link>
           </TooltipTrigger>
           <TooltipContent>Notifikasi</TooltipContent>
         </Tooltip>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white pl-1 pr-2 py-1 transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-500)] focus-visible:ring-offset-2"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[var(--primary-700)] to-[var(--primary-900)] text-[11px] font-semibold text-white">
-                {initials || 'U'}
-              </div>
-              <div className="hidden text-left sm:block">
-                <p className="text-[12px] font-medium leading-tight text-[var(--neutral-900)]">{name.split(' ')[0]}</p>
-                <p className="text-[10px] leading-tight text-[var(--neutral-500)]">{ROLE_LABEL[role] || role}</p>
-              </div>
-              <ChevronDown className="h-3.5 w-3.5 text-[var(--neutral-500)]" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Akun</DropdownMenuLabel>
-            <div className="px-2.5 py-1.5 text-xs">
-              <p className="font-medium text-[var(--neutral-900)]">{name}</p>
-              <p className="text-[var(--neutral-500)]">{ROLE_LABEL[role] || role}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/profile" className="flex items-center gap-2">
-                <User className="h-4 w-4 text-[var(--neutral-500)]" />
-                Profil saya
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/notifications" className="flex items-center gap-2">
-                <Bell className="h-4 w-4 text-[var(--neutral-500)]" />
-                Notifikasi
-                {unread > 0 && (
-                  <span className="ml-auto rounded-full bg-[var(--primary-50)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--primary-700)]">
-                    {unread}
-                  </span>
-                )}
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-[var(--status-rejected-fg)] focus:bg-rose-50 focus:text-[var(--status-rejected-fg)]"
-              onSelect={(e) => {
-                e.preventDefault();
-                startLogout(() => logout());
-              }}
-            >
-              <LogOut className="h-4 w-4" />
-              Keluar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </header>
   );
