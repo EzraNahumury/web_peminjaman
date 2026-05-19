@@ -53,6 +53,7 @@ const MENUS: Record<Role, MenuItem[]> = {
     { label: 'Pengajuan Masuk', href: '/dashboard/admin-unit/requests', icon: Inbox },
     { label: 'Blokir Jadwal', href: '/dashboard/admin-unit/blocks', icon: Lock },
     { label: 'Kelola Fasilitas', href: '/dashboard/admin-unit/facilities', icon: Settings },
+    { label: 'Integrasi WhatsApp', href: '/dashboard/admin-unit/whatsapp', icon: MessageCircle },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
     { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
     { label: 'Profil', href: '/dashboard/profile', icon: User },
@@ -60,7 +61,6 @@ const MENUS: Record<Role, MenuItem[]> = {
   SUPER_ADMIN: [
     { label: 'Beranda', href: '/dashboard', icon: Home },
     { label: 'Manajemen User', href: '/dashboard/super-admin/users', icon: Users },
-    { label: 'Integrasi WhatsApp', href: '/dashboard/super-admin/whatsapp', icon: MessageCircle },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
     { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
     { label: 'Profil', href: '/dashboard/profile', icon: Settings },

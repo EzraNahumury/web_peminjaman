@@ -6,15 +6,15 @@ import { WhatsAppPanel } from '@/components/dashboard/WhatsAppPanel';
 
 export const dynamic = 'force-dynamic';
 
-export default async function WhatsAppAdminPage() {
-  await requireRole('SUPER_ADMIN');
+export default async function AdminWhatsAppPage() {
+  await requireRole('ADMIN_UNIT');
   await autoBootstrapWA();
   const initial = await getWhatsAppStatus();
   return (
     <div className="space-y-6">
       <PageHeader
         title="Integrasi WhatsApp"
-        subtitle="Hubungkan FASKO ke nomor WhatsApp untuk mengirim notifikasi otomatis ke pengaju."
+        subtitle="Hubungkan FASKO ke nomor WhatsApp Admin Unit untuk mengirim notifikasi otomatis ke pengaju."
       />
       <WhatsAppPanel initial={initial} />
     </div>
