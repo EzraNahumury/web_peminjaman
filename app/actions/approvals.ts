@@ -13,8 +13,19 @@ async function loadRequest(id: number) {
   return queryOne<FacilityRequest>('SELECT * FROM facility_requests WHERE id = ?', [id]);
 }
 
-async function notifyOwner(req: FacilityRequest, title: string, message: string) {
-  await createNotification(req.userId, title, message, `/dashboard/pengurus/requests/${req.id}`);
+async function notifyOwner(
+  req: FacilityRequest,
+  title: string,
+  message: string,
+  opts?: { skipWA?: boolean }
+) {
+  await createNotification(
+    req.userId,
+    title,
+    message,
+    `/dashboard/pengurus/requests/${req.id}`,
+    opts
+  );
 }
 
 async function notifyValidatorsByScope(scope: string, title: string, message: string, link: string) {
@@ -44,7 +55,12 @@ export async function approveByBiroIII(requestId: number, note: string | null) {
     `Pengajuan ${req.requestCode} - ${req.activityName}`,
     `/dashboard/wr3-wd3/requests/${requestId}`
   );
-  await notifyOwner(req, `Pengajuan disetujui Biro III`, `Pengajuan ${req.requestCode} diteruskan ke ${scopeLabel}`);
+  await notifyOwner(
+    req,
+    `Pengajuan disetujui Biro III`,
+    `Pengajuan ${req.requestCode} diteruskan ke ${scopeLabel}`,
+    { skipWA: true }
+  );
   revalidatePath(`/dashboard/biro-iii/requests/${requestId}`);
   return { ok: true };
 }
@@ -62,7 +78,7 @@ export async function rejectByBiroIII(requestId: number, note: string | null) {
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'REJECT_BIRO_III', 'WAITING_BIRO_III', 'REJECTED_BY_BIRO_III', note]
   );
-  await notifyOwner(req, 'Pengajuan ditolak', `Pengajuan ${req.requestCode} ditolak oleh Biro III`);
+  await notifyOwner(req, 'Pengajuan ditolak', `Pengajuan ${req.requestCode} ditolak oleh Biro III`, { skipWA: true });
   revalidatePath(`/dashboard/biro-iii/requests/${requestId}`);
   return { ok: true };
 }

@@ -14,12 +14,14 @@ export async function createNotification(
   userId: number,
   title: string,
   message: string,
-  link?: string | null
+  link?: string | null,
+  options?: { skipWA?: boolean }
 ) {
   await execute(
     'INSERT INTO notifications (userId, title, message, link) VALUES (?,?,?,?)',
     [userId, title, message, link ?? null]
   );
+  if (options?.skipWA) return;
   const user = await query<{ name: string; phone: string | null }>(
     'SELECT name, phone FROM users WHERE id = ?',
     [userId]
@@ -31,7 +33,10 @@ export async function createNotification(
 
 export async function createNotificationForRole(role: Role, title: string, message: string, link?: string | null) {
   const users = await query<{ id: number }>('SELECT id FROM users WHERE role = ?', [role]);
-  await Promise.all(users.map((u) => createNotification(u.id, title, message, link)));
+  // staff-targeted: in-app only, never blast WA
+  await Promise.all(
+    users.map((u) => createNotification(u.id, title, message, link, { skipWA: true }))
+  );
 }
 
 export async function markAsRead(notificationId: number, userId: number) {
