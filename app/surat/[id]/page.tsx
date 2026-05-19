@@ -41,7 +41,7 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
   ) {
     redirect('/dashboard');
   }
-  if (req.status !== 'APPROVED') {
+  if (req.status !== 'APPROVED' && req.status !== 'WAITING_ADMIN_UNIT') {
     redirect(`/dashboard/pengurus/requests/${req.id}`);
   }
 

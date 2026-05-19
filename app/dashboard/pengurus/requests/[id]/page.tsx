@@ -150,7 +150,7 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
               <StatusBadge status={displayStatus} />
             </div>
             <div className="flex flex-wrap justify-end gap-2">
-              {req.status === 'APPROVED' && (
+              {(req.status === 'APPROVED' || req.status === 'WAITING_ADMIN_UNIT') && (
                 <Link href={`/surat/${req.id}`} target="_blank">
                   <Button variant="primary" className="bg-white !text-[var(--primary-800)] hover:bg-white/95">
                     <Download size={14} />
