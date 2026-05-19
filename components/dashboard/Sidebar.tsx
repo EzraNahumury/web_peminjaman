@@ -16,6 +16,7 @@ import {
   User,
   GraduationCap,
   LogOut,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/types';
@@ -59,6 +60,7 @@ const MENUS: Record<Role, MenuItem[]> = {
   SUPER_ADMIN: [
     { label: 'Beranda', href: '/dashboard', icon: Home },
     { label: 'Manajemen User', href: '/dashboard/super-admin/users', icon: Users },
+    { label: 'Integrasi WhatsApp', href: '/dashboard/super-admin/whatsapp', icon: MessageCircle },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
     { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
     { label: 'Profil', href: '/dashboard/profile', icon: Settings },

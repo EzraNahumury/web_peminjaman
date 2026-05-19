@@ -1,12 +1,32 @@
 import 'server-only';
 import { execute, query } from '@/lib/db';
+import { sendWhatsApp } from '@/lib/baileys';
 import type { Notification, Role } from '@/types';
 
-export async function createNotification(userId: number, title: string, message: string, link?: string | null) {
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'FASKO';
+
+function buildWAMessage(name: string | null, title: string, message: string): string {
+  const hi = name ? `Halo ${name},\n` : '';
+  return `${hi}*${APP_NAME}* — ${title}\n\n${message}`;
+}
+
+export async function createNotification(
+  userId: number,
+  title: string,
+  message: string,
+  link?: string | null
+) {
   await execute(
     'INSERT INTO notifications (userId, title, message, link) VALUES (?,?,?,?)',
     [userId, title, message, link ?? null]
   );
+  const user = await query<{ name: string; phone: string | null }>(
+    'SELECT name, phone FROM users WHERE id = ?',
+    [userId]
+  );
+  if (user[0]?.phone) {
+    void sendWhatsApp(user[0].phone, buildWAMessage(user[0].name, title, message)).catch(() => {});
+  }
 }
 
 export async function createNotificationForRole(role: Role, title: string, message: string, link?: string | null) {
