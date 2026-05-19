@@ -10,6 +10,7 @@ import { verifySession } from '@/lib/auth';
 
 const ProfileSchema = z.object({
   name: z.string().trim().min(2, 'Nama minimal 2 karakter'),
+  email: z.string().trim().toLowerCase().email('Email tidak valid'),
   phone: z.string().trim().min(6, 'No HP minimal 6 karakter'),
   organizationName: z.string().trim().optional().or(z.literal('')),
   identityNumber: z.string().trim().optional().or(z.literal('')),
@@ -32,18 +33,23 @@ export async function updateProfile(_prev: ProfileFormState, formData: FormData)
   const session = await verifySession();
   const parsed = ProfileSchema.safeParse({
     name: formData.get('name'),
+    email: formData.get('email'),
     phone: formData.get('phone'),
     organizationName: formData.get('organizationName'),
     identityNumber: formData.get('identityNumber'),
   });
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
   const d = parsed.data;
+
+  const dup = await queryOne<{ id: number }>('SELECT id FROM users WHERE email = ? AND id <> ?', [d.email, session.userId]);
+  if (dup) return { fieldErrors: { email: ['Email sudah digunakan akun lain'] } };
+
   await execute(
-    'UPDATE users SET name = ?, phone = ?, organizationName = ?, identityNumber = ? WHERE id = ?',
-    [d.name, d.phone, d.organizationName || null, d.identityNumber || null, session.userId]
+    'UPDATE users SET name = ?, email = ?, phone = ?, organizationName = ?, identityNumber = ? WHERE id = ?',
+    [d.name, d.email, d.phone, d.organizationName || null, d.identityNumber || null, session.userId]
   );
   revalidatePath('/dashboard/profile');
-  return { success: 'Profil berhasil diperbarui.' };
+  return { success: 'Profil berhasil diperbarui. Jika email diubah, gunakan email baru saat login berikutnya.' };
 }
 
 export async function changePassword(_prev: ProfileFormState, formData: FormData): Promise<ProfileFormState> {

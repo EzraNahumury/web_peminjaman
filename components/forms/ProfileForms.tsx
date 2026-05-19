@@ -40,8 +40,8 @@ export function ProfileEditForm({ user }: { user: User }) {
         <Field label="Nama Lengkap" error={errs.name} required>
           <Input name="name" defaultValue={user.name} required />
         </Field>
-        <Field label="Email" hint="Email tidak dapat diubah">
-          <Input type="email" defaultValue={user.email} disabled />
+        <Field label="Email" error={errs.email} hint="Email dipakai untuk login dan notifikasi." required>
+          <Input type="email" name="email" defaultValue={user.email} required autoComplete="email" />
         </Field>
         <Field label="No HP" error={errs.phone} required>
           <Input name="phone" defaultValue={user.phone ?? ''} required />

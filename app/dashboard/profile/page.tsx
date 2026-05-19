@@ -17,7 +17,7 @@ export default async function ProfilePage() {
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Data Akun</h2>
-          <p className="mt-0.5 text-xs text-slate-500">Email tidak dapat diubah karena dipakai untuk login.</p>
+          <p className="mt-0.5 text-xs text-slate-500">Email dipakai sebagai username login dan tujuan notifikasi.</p>
         </div>
         <div className="p-6">
           <ProfileEditForm user={user} />
