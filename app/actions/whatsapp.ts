@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/auth';
-import { getWAState, logoutWA, startWA } from '@/lib/baileys';
+import { getWAState, logoutWA, sendWhatsApp, startWA } from '@/lib/baileys';
 
 export async function getWhatsAppStatus() {
   await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
@@ -22,4 +22,13 @@ export async function disconnectWhatsApp() {
   await logoutWA();
   revalidatePath('/dashboard/admin-unit/whatsapp');
   revalidatePath('/dashboard/super-admin/whatsapp');
+}
+
+export async function sendTestWhatsApp(phone: string) {
+  await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+  const message =
+    `*FASKO* — Tes Pesan\n\n` +
+    `Halo, ini adalah pesan uji dari sistem peminjaman fasilitas UKDW.\n` +
+    `Jika Anda menerima pesan ini, integrasi WhatsApp Admin Unit berfungsi normal.`;
+  return sendWhatsApp(phone, message);
 }

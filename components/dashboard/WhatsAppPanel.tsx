@@ -4,7 +4,13 @@ import Image from 'next/image';
 import { Loader2, Smartphone, RefreshCcw, Plug, PlugZap, ShieldCheck, ShieldAlert, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
-import { connectWhatsApp, disconnectWhatsApp, getWhatsAppStatus } from '@/app/actions/whatsapp';
+import { Input } from '@/components/ui/Field';
+import {
+  connectWhatsApp,
+  disconnectWhatsApp,
+  getWhatsAppStatus,
+  sendTestWhatsApp,
+} from '@/app/actions/whatsapp';
 
 type WAState = {
   status: 'idle' | 'connecting' | 'qr' | 'connected' | 'disconnected';
@@ -66,7 +72,6 @@ export function WhatsAppPanel({ initial }: { initial: WAState }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      {/* Status card */}
       <div className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white p-6 shadow-[var(--shadow-xs)] lg:col-span-1">
         <div className="flex items-center gap-3">
           <div
@@ -134,7 +139,6 @@ export function WhatsAppPanel({ initial }: { initial: WAState }) {
         </div>
       </div>
 
-      {/* QR / connected card */}
       <div className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white p-6 shadow-[var(--shadow-xs)] lg:col-span-2">
         {showQR ? (
           <div className="flex flex-col items-center gap-5">
@@ -165,20 +169,7 @@ export function WhatsAppPanel({ initial }: { initial: WAState }) {
             Memulai sesi…
           </div>
         ) : isConnected ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--primary-50)] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
-              <ShieldCheck className="h-8 w-8" />
-            </div>
-            <h3 className="text-lg font-semibold text-[var(--neutral-900)]">WhatsApp terhubung</h3>
-            <p className="max-w-md text-sm text-[var(--neutral-600)]">
-              Notifikasi penting (approval, penolakan, alternatif) akan otomatis dikirim ke nomor pengaju.
-            </p>
-            {state.phoneNumber && (
-              <p className="text-xs text-[var(--neutral-500)]">
-                Akun pengirim: <span className="font-mono font-semibold text-[var(--neutral-800)]">+{state.phoneNumber}</span>
-              </p>
-            )}
-          </div>
+          <ConnectedPanel phoneNumber={state.phoneNumber} />
         ) : (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--neutral-100)] text-[var(--neutral-500)]">
@@ -191,6 +182,77 @@ export function WhatsAppPanel({ initial }: { initial: WAState }) {
             </p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ConnectedPanel({ phoneNumber }: { phoneNumber: string | null }) {
+  const [testPhone, setTestPhone] = useState('');
+  const [sending, startSend] = useTransition();
+
+  function handleTest() {
+    if (!testPhone.trim()) {
+      toast.error('Masukkan nomor tujuan');
+      return;
+    }
+    startSend(async () => {
+      const res = await sendTestWhatsApp(testPhone.trim());
+      if (res.ok) {
+        toast.success('Pesan tes terkirim', { description: `Cek WA di ${testPhone}` });
+        setTestPhone('');
+      } else {
+        toast.error('Gagal kirim', { description: res.error ?? 'Tidak diketahui' });
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-6 py-2">
+      <div className="flex flex-col items-center text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--primary-50)] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
+          <ShieldCheck className="h-7 w-7" />
+        </div>
+        <h3 className="mt-3 text-lg font-semibold text-[var(--neutral-900)]">WhatsApp terhubung</h3>
+        <p className="mt-1 max-w-md text-sm text-[var(--neutral-600)]">
+          Notifikasi approval/penolakan otomatis dikirim ke nomor pengaju di kolom &quot;No HP&quot; profil mereka.
+        </p>
+        {phoneNumber && (
+          <p className="mt-1 text-xs text-[var(--neutral-500)]">
+            Akun pengirim:{' '}
+            <span className="font-mono font-semibold text-[var(--neutral-800)]">+{phoneNumber}</span>
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-4">
+        <p className="text-sm font-semibold text-[var(--neutral-900)]">Tes kirim pesan</p>
+        <p className="mt-0.5 text-xs text-[var(--neutral-500)]">
+          Masukkan nomor tujuan (format <span className="font-mono">08xxxxxxxxxx</span> atau{' '}
+          <span className="font-mono">62xxxxxxxxxx</span>) untuk verifikasi koneksi.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={testPhone}
+            onChange={(e) => setTestPhone(e.target.value)}
+            placeholder="082338142821"
+            type="tel"
+          />
+          <Button onClick={handleTest} disabled={sending}>
+            {sending ? <Loader2 className="animate-spin" /> : <Smartphone />}
+            Kirim tes
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-[var(--radius-md)] border border-[var(--primary-100)] bg-[var(--primary-50)]/60 p-4 text-xs text-[var(--primary-800)]">
+        <p className="font-semibold">Cara kerja otomatis</p>
+        <ul className="mt-1.5 space-y-1 leading-relaxed">
+          <li>• Saat Biro III / WR3 / WD3 / Admin Unit menyetujui atau menolak pengajuan, pengaju otomatis menerima WA.</li>
+          <li>• Sistem normalisasi nomor: <span className="font-mono">08xxx</span> → <span className="font-mono">62xxx</span>.</li>
+          <li>• Nomor tidak valid / kosong akan dilewati tanpa error.</li>
+          <li>• Sesi tersimpan; reconnect otomatis saat server restart.</li>
+        </ul>
       </div>
     </div>
   );
