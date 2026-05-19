@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Field, Input } from '@/components/ui/Field';
@@ -34,21 +34,32 @@ function Alert({ state }: { state: ProfileFormState }) {
 
 export function ProfileEditForm({ user }: { user: User }) {
   const router = useRouter();
-  const [state, action, pending] = useActionState<ProfileFormState, FormData>(updateProfile, undefined);
-  const errs = state?.fieldErrors ?? {};
   const isPengurus = user.role === 'PENGURUS';
+  const [pending, start] = useTransition();
+  const [errs, setErrs] = useState<Record<string, string[]>>({});
 
-  useEffect(() => {
-    if (state?.success) {
-      toast.success('Profil disimpan', { description: state.success });
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setErrs({});
+    start(async () => {
+      const res = await updateProfile(undefined, fd);
+      if (res?.fieldErrors) {
+        setErrs(res.fieldErrors);
+        toast.error('Periksa kembali isian form');
+        return;
+      }
+      if (res?.error) {
+        toast.error('Gagal menyimpan', { description: res.error });
+        return;
+      }
+      toast.success('Profil disimpan', { description: res?.success ?? 'Data terbaru tersimpan.' });
       router.refresh();
-    } else if (state?.error) {
-      toast.error('Gagal menyimpan', { description: state.error });
-    }
-  }, [state, router]);
+    });
+  }
 
   return (
-    <form action={action} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nama Lengkap" error={errs.name} required>
           <Input name="name" defaultValue={user.name} required />
@@ -70,7 +81,6 @@ export function ProfileEditForm({ user }: { user: User }) {
           </div>
         )}
       </div>
-      <Alert state={state} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           {pending ? 'Menyimpan...' : 'Simpan Perubahan'}
