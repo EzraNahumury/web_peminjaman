@@ -46,9 +46,14 @@ INSERT INTO facilities (name, category, managingUnit, location, capacity, descri
  ('Tripod','Peralatan','LPAIP','Inventaris LPAIP',NULL,'Tripod kamera untuk shooting stabil'),
  ('Saramonic','Peralatan','LPAIP','Inventaris LPAIP',NULL,'Mikrofon Saramonic untuk recording audio');
 
-INSERT INTO users (name, email, password, role, organizationName, phone, identityNumber) VALUES
- ('Pengurus Demo','pengurus@kampus.test','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','PENGURUS','BEM Universitas','081234567890','2021001'),
- ('Biro III Demo','biro3@kampus.test','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','BIRO_III',NULL,'081234567891',NULL),
- ('WR3 Demo','wr3@kampus.test','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','WR3_WD3',NULL,'081234567892',NULL),
- ('Admin Unit Demo','adminunit@kampus.test','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','ADMIN_UNIT',NULL,'081234567893',NULL),
- ('Super Admin','superadmin@kampus.test','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy','SUPER_ADMIN',NULL,'081234567894',NULL);
+INSERT INTO users (name, email, password, role, isActive, userScope, bureauScope, organizationName, phone, identityNumber) VALUES
+ ('Pengurus Demo',  'pengurus@kampus.test',     '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'PENGURUS',    1, NULL,           NULL,      'BEM Universitas', '081234567890', '2021001'),
+ ('Biro III Demo', 'biro3@kampus.test',        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'BIRO_III',    1, NULL,           NULL,      NULL,              '081234567891', NULL),
+ ('WR3 Demo',      'wr3@kampus.test',          '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'WR3_WD3',     1, 'UNIVERSITAS',  NULL,      NULL,              '081234567892', NULL),
+ ('WD3 Demo',      'wd3@kampus.test',          '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'WR3_WD3',     1, 'FAKULTAS',     NULL,      NULL,              '081234567895', NULL),
+ ('Admin Biro I',  'biro1@kampus.test',        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'ADMIN_UNIT',  1, NULL,           'BIRO_I',  NULL,              '081234567910', NULL),
+ ('Admin Biro IV', 'biro4@kampus.test',        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'ADMIN_UNIT',  1, NULL,           'BIRO_IV', NULL,              '081234567911', NULL),
+ ('Admin PPLK',    'pplk@kampus.test',         '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'ADMIN_UNIT',  1, NULL,           'PPLK',    NULL,              '081234567912', NULL),
+ ('Admin KRT',     'krt@kampus.test',          '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'ADMIN_UNIT',  1, NULL,           'KRT',     NULL,              '081234567913', NULL),
+ ('Admin LPAIP',   'lpaip@kampus.test',        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'ADMIN_UNIT',  1, NULL,           'LPAIP',   NULL,              '081234567914', NULL),
+ ('Super Admin',   'superadmin@kampus.test',   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'SUPER_ADMIN', 1, NULL,           NULL,      NULL,              '081234567894', NULL);
