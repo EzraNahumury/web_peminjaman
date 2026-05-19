@@ -7,7 +7,7 @@ import { createSession, destroySession } from '@/lib/session';
 import { LoginSchema, RegisterSchema } from '@/lib/validations';
 import { dashboardPathForRole } from '@/lib/auth';
 import { createNotificationForRole } from '@/lib/notifications';
-import type { ActivityScope, Role } from '@/types';
+import type { ActivityScope, ManagingUnit, Role } from '@/types';
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string[]> } | undefined;
 
@@ -57,8 +57,9 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
     role: Role;
     isActive: number;
     userScope: ActivityScope | null;
+    bureauScope: ManagingUnit | null;
   }>(
-    'SELECT id, name, email, password, role, isActive, userScope FROM users WHERE email = ?',
+    'SELECT id, name, email, password, role, isActive, userScope, bureauScope FROM users WHERE email = ?',
     [parsed.data.email]
   );
   if (!user) return { error: 'Email atau password salah' };
@@ -75,6 +76,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
     name: user.name,
     isActive: Boolean(user.isActive),
     userScope: user.userScope ?? null,
+    bureauScope: user.bureauScope ?? null,
   });
   redirect(dashboardPathForRole(user.role));
 }

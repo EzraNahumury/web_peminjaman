@@ -33,6 +33,7 @@ export async function createSession(user: {
   name: string;
   isActive: boolean;
   userScope?: SessionPayload['userScope'];
+  bureauScope?: SessionPayload['bureauScope'];
 }) {
   const expiresAt = Date.now() + EXPIRES_IN_MS;
   const token = await encryptSession({
@@ -42,6 +43,7 @@ export async function createSession(user: {
     name: user.name,
     isActive: user.isActive,
     userScope: user.userScope ?? null,
+    bureauScope: user.bureauScope ?? null,
     expiresAt,
   });
   const store = await cookies();

@@ -73,6 +73,7 @@ export interface User {
   role: Role;
   isActive: boolean | number;
   userScope: ActivityScope | null;
+  bureauScope: ManagingUnit | null;
   organizationName: string | null;
   phone: string | null;
   identityNumber: string | null;
@@ -185,6 +186,7 @@ export interface SessionPayload {
   name: string;
   isActive: boolean;
   userScope?: ActivityScope | null;
+  bureauScope?: ManagingUnit | null;
   expiresAt: number;
   [key: string]: unknown;
 }

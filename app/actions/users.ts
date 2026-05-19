@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { execute, query } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { createNotification } from '@/lib/notifications';
-import type { ActivityScope, Role, User } from '@/types';
+import type { ActivityScope, ManagingUnit, Role, User } from '@/types';
 
 export async function getUsers(filter?: { role?: Role; isActive?: boolean }) {
   await requireRole('SUPER_ADMIN');
@@ -48,5 +48,11 @@ export async function deactivateUser(userId: number): Promise<void> {
 export async function updateUserScope(userId: number, scope: ActivityScope): Promise<void> {
   await requireRole('SUPER_ADMIN');
   await execute('UPDATE users SET userScope = ? WHERE id = ? AND role = ?', [scope, userId, 'WR3_WD3']);
+  revalidatePath('/dashboard/super-admin/users');
+}
+
+export async function updateAdminBureau(userId: number, bureau: ManagingUnit): Promise<void> {
+  await requireRole('SUPER_ADMIN');
+  await execute('UPDATE users SET bureauScope = ? WHERE id = ? AND role = ?', [bureau, userId, 'ADMIN_UNIT']);
   revalidatePath('/dashboard/super-admin/users');
 }

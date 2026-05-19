@@ -196,19 +196,24 @@ async function main() {
     idnum: string | null;
     isActive: 0 | 1;
     scope: 'UNIVERSITAS' | 'FAKULTAS' | null;
+    bureau: 'BIRO_I' | 'BIRO_IV' | 'PPLK' | 'KRT' | 'LPAIP' | null;
   };
   const staff: UserRow[] = [
-    { name: 'Pengurus Demo', email: 'pengurus@kampus.test', role: 'PENGURUS', org: 'BEM Universitas', phone: '081234567890', idnum: '2021001', isActive: 1, scope: null },
-    { name: 'Biro III Demo', email: 'biro3@kampus.test', role: 'BIRO_III', org: null, phone: '081234567891', idnum: null, isActive: 1, scope: null },
-    { name: 'WR3 Demo', email: 'wr3@kampus.test', role: 'WR3_WD3', org: null, phone: '081234567892', idnum: null, isActive: 1, scope: 'UNIVERSITAS' },
-    { name: 'WD3 Demo', email: 'wd3@kampus.test', role: 'WR3_WD3', org: null, phone: '081234567895', idnum: null, isActive: 1, scope: 'FAKULTAS' },
-    { name: 'Admin Unit Demo', email: 'adminunit@kampus.test', role: 'ADMIN_UNIT', org: null, phone: '081234567893', idnum: null, isActive: 1, scope: null },
-    { name: 'Super Admin', email: 'superadmin@kampus.test', role: 'SUPER_ADMIN', org: null, phone: '081234567894', idnum: null, isActive: 1, scope: null },
+    { name: 'Pengurus Demo', email: 'pengurus@kampus.test', role: 'PENGURUS', org: 'BEM Universitas', phone: '081234567890', idnum: '2021001', isActive: 1, scope: null, bureau: null },
+    { name: 'Biro III Demo', email: 'biro3@kampus.test', role: 'BIRO_III', org: null, phone: '081234567891', idnum: null, isActive: 1, scope: null, bureau: null },
+    { name: 'WR3 Demo', email: 'wr3@kampus.test', role: 'WR3_WD3', org: null, phone: '081234567892', idnum: null, isActive: 1, scope: 'UNIVERSITAS', bureau: null },
+    { name: 'WD3 Demo', email: 'wd3@kampus.test', role: 'WR3_WD3', org: null, phone: '081234567895', idnum: null, isActive: 1, scope: 'FAKULTAS', bureau: null },
+    { name: 'Admin Biro I', email: 'biro1@kampus.test', role: 'ADMIN_UNIT', org: null, phone: '081234567910', idnum: null, isActive: 1, scope: null, bureau: 'BIRO_I' },
+    { name: 'Admin Biro IV', email: 'biro4@kampus.test', role: 'ADMIN_UNIT', org: null, phone: '081234567911', idnum: null, isActive: 1, scope: null, bureau: 'BIRO_IV' },
+    { name: 'Admin PPLK', email: 'pplk@kampus.test', role: 'ADMIN_UNIT', org: null, phone: '081234567912', idnum: null, isActive: 1, scope: null, bureau: 'PPLK' },
+    { name: 'Admin KRT', email: 'krt@kampus.test', role: 'ADMIN_UNIT', org: null, phone: '081234567913', idnum: null, isActive: 1, scope: null, bureau: 'KRT' },
+    { name: 'Admin LPAIP', email: 'lpaip@kampus.test', role: 'ADMIN_UNIT', org: null, phone: '081234567914', idnum: null, isActive: 1, scope: null, bureau: 'LPAIP' },
+    { name: 'Super Admin', email: 'superadmin@kampus.test', role: 'SUPER_ADMIN', org: null, phone: '081234567894', idnum: null, isActive: 1, scope: null, bureau: null },
   ];
   for (const u of staff) {
     await conn.execute(
-      'INSERT INTO users (name, email, password, role, isActive, userScope, organizationName, phone, identityNumber) VALUES (?,?,?,?,?,?,?,?,?)',
-      [u.name, u.email, hash, u.role, u.isActive, u.scope, u.org, u.phone, u.idnum]
+      'INSERT INTO users (name, email, password, role, isActive, userScope, bureauScope, organizationName, phone, identityNumber) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [u.name, u.email, hash, u.role, u.isActive, u.scope, u.bureau, u.org, u.phone, u.idnum]
     );
   }
 

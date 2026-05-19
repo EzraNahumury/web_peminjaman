@@ -1,17 +1,20 @@
-import { notFound } from 'next/navigation';
-import { requireRole } from '@/lib/auth';
+import { notFound, redirect } from 'next/navigation';
+import { requireRole, getCurrentUser } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
 import { ApproverRequestDetail } from '@/components/dashboard/ApproverRequestDetail';
 import { AdminUnitActions } from '@/components/dashboard/AdminUnitActions';
 import { AdminOverrideButton } from '@/components/dashboard/AdminOverrideButton';
 import { getAlternatives } from '@/lib/availability';
-import type { ApprovalLog, Facility, FacilityRequest } from '@/types';
+import type { ApprovalLog, Facility, FacilityRequest, ManagingUnit } from '@/types';
 
 export default async function AdminUnitDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await requireRole('ADMIN_UNIT');
-  const req = await queryOne<FacilityRequest & { facilityName: string; userName: string }>(
-    `SELECT fr.*, f.name AS facilityName, u.name AS userName
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  const bureau = (user.bureauScope ?? null) as ManagingUnit | null;
+  const req = await queryOne<FacilityRequest & { facilityName: string; userName: string; managingUnit: ManagingUnit }>(
+    `SELECT fr.*, f.name AS facilityName, f.managingUnit, u.name AS userName
      FROM facility_requests fr
      JOIN facilities f ON f.id = fr.facilityId
      JOIN users u ON u.id = fr.userId
@@ -19,6 +22,9 @@ export default async function AdminUnitDetail({ params }: { params: Promise<{ id
     [Number(id)]
   );
   if (!req) notFound();
+  if (bureau && req.managingUnit !== bureau) {
+    redirect('/dashboard/admin-unit/requests');
+  }
   const logs = await query<ApprovalLog & { actorName: string | null }>(
     `SELECT al.*, u.name AS actorName FROM approval_logs al
      LEFT JOIN users u ON u.id = al.actorId

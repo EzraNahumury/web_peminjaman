@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth';
-import { activateUser, deactivateUser, getUsers, updateUserScope } from '@/app/actions/users';
+import { activateUser, deactivateUser, getUsers, updateAdminBureau, updateUserScope } from '@/app/actions/users';
+import { MANAGING_UNIT_LABEL, type ManagingUnit } from '@/types';
 import { PageHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { fmtDateTime } from '@/lib/request-code';
@@ -92,6 +93,28 @@ export default async function SuperAdminUsersPage() {
                         >
                           <option value="UNIVERSITAS">WR3 (Universitas)</option>
                           <option value="FAKULTAS">WD3 (Fakultas)</option>
+                        </select>
+                        <button type="submit" className="ml-1 text-xs font-medium text-blue-600 hover:text-blue-700">
+                          Simpan
+                        </button>
+                      </form>
+                    ) : u.role === 'ADMIN_UNIT' ? (
+                      <form action={async (formData: FormData) => {
+                        'use server';
+                        const v = String(formData.get('bureau') ?? '') as ManagingUnit;
+                        if (['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'].includes(v))
+                          await updateAdminBureau(u.id, v);
+                      }}>
+                        <select
+                          name="bureau"
+                          defaultValue={u.bureauScope ?? 'BIRO_I'}
+                          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
+                        >
+                          {(['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'] as ManagingUnit[]).map((b) => (
+                            <option key={b} value={b}>
+                              {MANAGING_UNIT_LABEL[b]}
+                            </option>
+                          ))}
                         </select>
                         <button type="submit" className="ml-1 text-xs font-medium text-blue-600 hover:text-blue-700">
                           Simpan

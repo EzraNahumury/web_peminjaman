@@ -9,16 +9,29 @@ import { PRIORITY_ORDER_SQL } from '@/utils/priority';
 import { toMysqlDateTime } from '@/lib/request-code';
 import type { FacilityRequest, RequestStatus } from '@/types';
 
-type LoadedRequest = FacilityRequest & { facilityName: string };
+type LoadedRequest = FacilityRequest & { facilityName: string; managingUnit: string };
 
 async function loadRequest(id: number): Promise<LoadedRequest | null> {
   return queryOne<LoadedRequest>(
-    `SELECT fr.*, f.name AS facilityName
+    `SELECT fr.*, f.name AS facilityName, f.managingUnit
      FROM facility_requests fr
      JOIN facilities f ON f.id = fr.facilityId
      WHERE fr.id = ?`,
     [id]
   );
+}
+
+async function notifyAdminByBureau(
+  bureau: string,
+  title: string,
+  message: string,
+  link: string
+) {
+  const users = await query<{ id: number }>(
+    'SELECT id FROM users WHERE role = ? AND isActive = 1 AND bureauScope = ?',
+    ['ADMIN_UNIT', bureau]
+  );
+  await Promise.all(users.map((u) => createNotification(u.id, title, message, link, { skipWA: true })));
 }
 
 function facilityLabel(req: LoadedRequest): string {
@@ -110,8 +123,8 @@ export async function approveByWR3WD3(requestId: number, note: string | null) {
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'APPROVE_WR3_WD3', 'WAITING_WR3_WD3', 'WAITING_ADMIN_UNIT', note]
   );
-  await createNotificationForRole(
-    'ADMIN_UNIT',
+  await notifyAdminByBureau(
+    req.managingUnit,
     'Pengajuan menunggu review akhir',
     `${facilityLabel(req)} — ${req.activityName} (${req.organizationName})`,
     `/dashboard/admin-unit/requests/${requestId}`
@@ -503,7 +516,12 @@ export async function rejectOverride(requestId: number, reason: string | null) {
 
 export async function getRequestsForRole(
   status: RequestStatus,
-  options?: { scope?: 'UNIVERSITAS' | 'FAKULTAS'; page?: number; pageSize?: number }
+  options?: {
+    scope?: 'UNIVERSITAS' | 'FAKULTAS';
+    bureau?: 'BIRO_I' | 'BIRO_IV' | 'PPLK' | 'KRT' | 'LPAIP';
+    page?: number;
+    pageSize?: number;
+  }
 ) {
   const page = options?.page ?? 1;
   const pageSize = options?.pageSize ?? 10;
@@ -515,10 +533,16 @@ export async function getRequestsForRole(
     where.push('fr.activityScope = ?');
     params.push(options.scope);
   }
+  if (options?.bureau) {
+    where.push('f.managingUnit = ?');
+    params.push(options.bureau);
+  }
   const whereSql = where.join(' AND ');
 
   const [{ total }] = await query<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM facility_requests fr WHERE ${whereSql}`,
+    `SELECT COUNT(*) AS total FROM facility_requests fr
+       JOIN facilities f ON f.id = fr.facilityId
+     WHERE ${whereSql}`,
     params
   );
   const items = await query<FacilityRequest & { facilityName: string; userName: string; priorityScore: number }>(
