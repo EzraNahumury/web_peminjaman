@@ -49,7 +49,7 @@ export default async function DashboardIndex() {
         <StatCard label="Total User" value={totalUsers} tone="violet" hint={`${pendingUsers} menunggu aktivasi`} />
         <StatCard label="Total Pengajuan" value={totalReq} tone="slate" />
         <StatCard label="Sedang Diproses" value={totalPending} tone="amber" />
-        <StatCard label="Disetujui" value={totalAppr} tone="emerald" />
+        <StatCard label="Disetujui" value={totalAppr} tone="primary" />
       </div>
     </div>
   );

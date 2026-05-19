@@ -1,24 +1,32 @@
 import type { RequestStatus } from '@/types';
 
-const MAP: Record<RequestStatus, { label: string; cls: string; dot: string }> = {
-  DRAFT: { label: 'Draft', cls: 'bg-slate-100 text-slate-700 ring-slate-200', dot: 'bg-slate-400' },
-  SUBMITTED: { label: 'Terkirim', cls: 'bg-blue-50 text-blue-700 ring-blue-200', dot: 'bg-blue-500' },
-  WAITING_BIRO_III: { label: 'Menunggu Biro III', cls: 'bg-amber-50 text-amber-800 ring-amber-200', dot: 'bg-amber-500' },
-  REJECTED_BY_BIRO_III: { label: 'Ditolak', cls: 'bg-rose-50 text-rose-700 ring-rose-200', dot: 'bg-rose-500' },
-  WAITING_WR3_WD3: { label: 'Menunggu WR3/WD3', cls: 'bg-amber-50 text-amber-800 ring-amber-200', dot: 'bg-amber-500' },
-  REJECTED_BY_WR3_WD3: { label: 'Ditolak', cls: 'bg-rose-50 text-rose-700 ring-rose-200', dot: 'bg-rose-500' },
-  WAITING_ADMIN_UNIT: { label: 'Menunggu Admin Unit', cls: 'bg-amber-50 text-amber-800 ring-amber-200', dot: 'bg-amber-500' },
-  REVISION_REQUESTED: { label: 'Perlu Revisi', cls: 'bg-blue-50 text-blue-700 ring-blue-200', dot: 'bg-blue-500' },
-  APPROVED: { label: 'Disetujui', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' },
-  REJECTED: { label: 'Ditolak', cls: 'bg-rose-50 text-rose-700 ring-rose-200', dot: 'bg-rose-500' },
-  CANCELLED: { label: 'Dibatalkan', cls: 'bg-slate-100 text-slate-600 ring-slate-200', dot: 'bg-slate-400' },
+const MAP: Record<RequestStatus, { label: string; bg: string; fg: string; dot: string }> = {
+  DRAFT: { label: 'Draft', bg: 'var(--status-draft-bg)', fg: 'var(--status-draft-fg)', dot: '#3b82f6' },
+  SUBMITTED: { label: 'Terkirim', bg: 'var(--status-info-bg)', fg: 'var(--status-info-fg)', dot: '#0284c7' },
+  WAITING_BIRO_III: { label: 'Menunggu Biro III', bg: 'var(--status-pending-bg)', fg: 'var(--status-pending-fg)', dot: '#d97706' },
+  REJECTED_BY_BIRO_III: { label: 'Ditolak', bg: 'var(--status-rejected-bg)', fg: 'var(--status-rejected-fg)', dot: '#dc2626' },
+  WAITING_WR3_WD3: { label: 'Menunggu WR3/WD3', bg: 'var(--status-pending-bg)', fg: 'var(--status-pending-fg)', dot: '#d97706' },
+  REJECTED_BY_WR3_WD3: { label: 'Ditolak', bg: 'var(--status-rejected-bg)', fg: 'var(--status-rejected-fg)', dot: '#dc2626' },
+  WAITING_ADMIN_UNIT: { label: 'Menunggu Admin Unit', bg: 'var(--status-pending-bg)', fg: 'var(--status-pending-fg)', dot: '#d97706' },
+  REVISION_REQUESTED: { label: 'Perlu Revisi', bg: 'var(--status-info-bg)', fg: 'var(--status-info-fg)', dot: '#0284c7' },
+  APPROVED: { label: 'Disetujui', bg: 'var(--status-approved-bg)', fg: 'var(--status-approved-fg)', dot: '#16a34a' },
+  REJECTED: { label: 'Ditolak', bg: 'var(--status-rejected-bg)', fg: 'var(--status-rejected-fg)', dot: '#dc2626' },
+  CANCELLED: { label: 'Dibatalkan', bg: 'var(--status-cancelled-bg)', fg: 'var(--status-cancelled-fg)', dot: '#6b7280' },
 };
 
-export function StatusBadge({ status }: { status: RequestStatus }) {
+export function StatusBadge({ status, size = 'md' }: { status: RequestStatus; size?: 'sm' | 'md' }) {
   const m = MAP[status] ?? MAP.DRAFT;
+  const isPending = status.startsWith('WAITING_');
+  const padding = size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-[11px]';
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${m.cls}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full ${padding} font-medium`}
+      style={{ background: m.bg, color: m.fg }}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${isPending ? 'animate-pulse' : ''}`}
+        style={{ background: m.dot }}
+      />
       {m.label}
     </span>
   );

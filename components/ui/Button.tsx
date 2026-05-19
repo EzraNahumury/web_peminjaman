@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'outline';
-type Size = 'sm' | 'md';
+type Variant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'outline' | 'dark';
+type Size = 'sm' | 'md' | 'lg';
 
 export function Button({
   variant = 'primary',
@@ -10,18 +10,24 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
   const base =
-    'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-1';
+    'inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] font-medium tracking-[-0.01em] transition-all duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--primary-500)] active:scale-[0.985]';
   const sizes: Record<Size, string> = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm',
+    sm: 'h-8 px-3 text-xs',
+    md: 'h-10 px-4 text-sm',
+    lg: 'h-11 px-5 text-sm',
   };
   const variants: Record<Variant, string> = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-sm',
-    secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-300',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm',
-    success: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm',
-    ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-300',
-    outline: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-300',
+    primary:
+      'bg-[var(--primary-600)] text-white shadow-[var(--shadow-sm)] hover:bg-[var(--primary-700)] hover:shadow-[var(--shadow-md)]',
+    secondary: 'bg-[var(--neutral-100)] text-[var(--neutral-800)] hover:bg-[var(--neutral-200)]',
+    danger:
+      'bg-[var(--status-rejected-fg)] text-white shadow-[var(--shadow-sm)] hover:brightness-110',
+    success:
+      'bg-[var(--primary-600)] text-white shadow-[var(--shadow-sm)] hover:bg-[var(--primary-700)]',
+    ghost: 'bg-transparent text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]',
+    outline:
+      'border border-[var(--neutral-300)] bg-white text-[var(--neutral-800)] hover:bg-[var(--neutral-50)] hover:border-[var(--neutral-400)]',
+    dark: 'bg-[var(--neutral-900)] text-white hover:bg-[var(--neutral-800)] shadow-[var(--shadow-sm)]',
   };
   return <button {...props} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} />;
 }

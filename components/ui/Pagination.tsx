@@ -4,50 +4,65 @@ export function Pagination({
   total,
   page,
   pageSize,
-  basePath = '',
 }: {
   total: number;
   page: number;
   pageSize: number;
-  basePath?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (totalPages <= 1) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const buildUrl = (p: number) => `${basePath}?page=${p}`;
+  const link = (p: number) => `?page=${p}`;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm">
-      <p className="text-slate-600">
-        Menampilkan <span className="font-medium text-slate-900">{from}</span>–
-        <span className="font-medium text-slate-900">{to}</span> dari{' '}
-        <span className="font-medium text-slate-900">{total}</span> data
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white px-5 py-3 text-sm shadow-[var(--shadow-xs)]">
+      <p className="text-[var(--neutral-600)]">
+        Menampilkan <span className="font-semibold text-[var(--neutral-900)]">{from}</span>–
+        <span className="font-semibold text-[var(--neutral-900)]">{to}</span> dari{' '}
+        <span className="font-semibold text-[var(--neutral-900)]">{total}</span> data
       </p>
       <div className="flex items-center gap-1">
         {page > 1 ? (
           <Link
-            href={buildUrl(page - 1)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            href={link(page - 1)}
+            className="inline-flex h-8 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--neutral-300)] bg-white px-3 text-xs font-medium text-[var(--neutral-700)] transition-colors hover:bg-[var(--neutral-50)]"
           >
-            ← Sebelumnya
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            Sebelumnya
           </Link>
         ) : (
-          <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400">← Sebelumnya</span>
+          <span className="inline-flex h-8 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--neutral-200)] bg-[var(--neutral-50)] px-3 text-xs text-[var(--neutral-400)]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            Sebelumnya
+          </span>
         )}
-        <span className="px-3 py-1.5 text-sm text-slate-600">
-          Halaman <span className="font-semibold text-slate-900">{page}</span> dari {totalPages}
+        <span className="px-3 text-xs text-[var(--neutral-600)]">
+          Halaman <span className="font-semibold text-[var(--neutral-900)]">{page}</span> /{' '}
+          <span className="text-[var(--neutral-500)]">{totalPages}</span>
         </span>
         {page < totalPages ? (
           <Link
-            href={buildUrl(page + 1)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            href={link(page + 1)}
+            className="inline-flex h-8 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--neutral-300)] bg-white px-3 text-xs font-medium text-[var(--neutral-700)] transition-colors hover:bg-[var(--neutral-50)]"
           >
-            Berikutnya →
+            Berikutnya
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </Link>
         ) : (
-          <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400">Berikutnya →</span>
+          <span className="inline-flex h-8 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--neutral-200)] bg-[var(--neutral-50)] px-3 text-xs text-[var(--neutral-400)]">
+            Berikutnya
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </span>
         )}
       </div>
     </div>
