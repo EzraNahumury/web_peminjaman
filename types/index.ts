@@ -128,6 +128,7 @@ export interface FacilityRequest {
   activityLevel: ActivityLevel;
   additionalNeeds: string | null;
   attachmentUrl: string | null;
+  signedLetterUrl: string | null;
   notes: string | null;
   status: RequestStatus;
   currentStep: string | null;

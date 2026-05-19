@@ -188,6 +188,92 @@ export async function updateRevisionRequest(
   redirect(`/dashboard/pengurus/requests/${requestId}`);
 }
 
+const ALLOWED_LETTER_MIME = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+]);
+const MAX_LETTER_BYTES = 5 * 1024 * 1024;
+
+export async function uploadSignedLetter(
+  requestId: number,
+  formData: FormData
+): Promise<{ ok?: boolean; error?: string; url?: string }> {
+  const { promises: fs } = await import('node:fs');
+  const path = await import('node:path');
+  const session = await requireRole('PENGURUS');
+  const current = await queryOne<FacilityRequest & { facilityName: string }>(
+    `SELECT fr.*, f.name AS facilityName
+     FROM facility_requests fr JOIN facilities f ON f.id = fr.facilityId
+     WHERE fr.id = ? AND fr.userId = ?`,
+    [requestId, session.userId]
+  );
+  if (!current) return { error: 'Pengajuan tidak ditemukan' };
+  if (current.status !== 'WAITING_ADMIN_UNIT') {
+    return { error: 'Upload surat hanya tersedia saat status Menunggu Pengumpulan Surat' };
+  }
+
+  const file = formData.get('letter');
+  if (!(file instanceof File) || file.size === 0) return { error: 'Pilih file surat terlebih dahulu' };
+  if (!ALLOWED_LETTER_MIME.has(file.type)) return { error: 'Format harus PDF / PNG / JPG / WEBP' };
+  if (file.size > MAX_LETTER_BYTES) return { error: 'Ukuran file maksimal 5 MB' };
+
+  const ext =
+    file.type === 'application/pdf'
+      ? 'pdf'
+      : file.type === 'image/png'
+        ? 'png'
+        : file.type === 'image/webp'
+          ? 'webp'
+          : 'jpg';
+
+  const dir = path.join(process.cwd(), 'public', 'uploads', 'letters');
+  await fs.mkdir(dir, { recursive: true });
+  const fileName = `req-${requestId}-${Date.now()}.${ext}`;
+  const buf = Buffer.from(await file.arrayBuffer());
+  await fs.writeFile(path.join(dir, fileName), buf);
+
+  if (current.signedLetterUrl) {
+    const old = path.join(process.cwd(), 'public', current.signedLetterUrl.replace(/^\//, ''));
+    fs.unlink(old).catch(() => {});
+  }
+
+  const url = `/uploads/letters/${fileName}`;
+  await execute('UPDATE facility_requests SET signedLetterUrl = ? WHERE id = ?', [url, requestId]);
+
+  await createNotificationForRole(
+    'ADMIN_UNIT',
+    'Surat validasi siap ditinjau',
+    `${current.facilityName} — ${current.activityName} (${current.organizationName}) telah mengunggah surat.`,
+    `/dashboard/admin-unit/requests/${requestId}`
+  );
+
+  revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
+  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
+  return { ok: true, url };
+}
+
+export async function removeSignedLetter(requestId: number): Promise<void> {
+  const { promises: fs } = await import('node:fs');
+  const path = await import('node:path');
+  const session = await requireRole('PENGURUS');
+  const current = await queryOne<FacilityRequest>(
+    'SELECT * FROM facility_requests WHERE id = ? AND userId = ?',
+    [requestId, session.userId]
+  );
+  if (!current) return;
+  if (current.status !== 'WAITING_ADMIN_UNIT') return;
+  if (current.signedLetterUrl) {
+    const old = path.join(process.cwd(), 'public', current.signedLetterUrl.replace(/^\//, ''));
+    fs.unlink(old).catch(() => {});
+  }
+  await execute('UPDATE facility_requests SET signedLetterUrl = NULL WHERE id = ?', [requestId]);
+  revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
+  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
+}
+
 export async function cancelRequest(requestId: number, reason?: string | null) {
   const session = await requireRole('PENGURUS');
   const current = await queryOne<FacilityRequest>(

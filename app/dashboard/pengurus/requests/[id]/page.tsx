@@ -25,6 +25,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Timeline } from '@/components/dashboard/Timeline';
 import { Button } from '@/components/ui/Button';
 import { CancelButton } from '@/components/dashboard/CancelButton';
+import { SignedLetterUploader } from '@/components/dashboard/SignedLetterUploader';
 import { formatWIBDate, formatWIBTime } from '@/utils/date';
 import { ACTIVITY_SCOPE_LABEL } from '@/types';
 import type { ApprovalLog, FacilityRequest, RequestStatus } from '@/types';
@@ -229,6 +230,10 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
               {req.notes && <Item icon={<FileText size={13} />} label="Catatan Pengaju" value={req.notes} full />}
             </dl>
           </section>
+
+          {req.status === 'WAITING_ADMIN_UNIT' && (
+            <SignedLetterUploader requestId={req.id} currentUrl={req.signedLetterUrl} />
+          )}
         </div>
 
         {/* Timeline */}

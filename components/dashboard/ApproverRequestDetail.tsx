@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { FileCheck2, FileText } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Timeline } from '@/components/dashboard/Timeline';
 import { fmtDateTime } from '@/lib/request-code';
@@ -48,6 +50,45 @@ export function ApproverRequestDetail({ req, logs, actions }: Props) {
               <Item label="Catatan Pengaju" value={req.notes ?? '-'} full />
             </dl>
           </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-6 py-4">
+              <h2 className="text-sm font-semibold text-slate-900">Surat Validasi</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Surat yang sudah ditandatangani diunggah pengaju setelah persetujuan WR3/WD3.
+              </p>
+            </div>
+            <div className="p-6">
+              {req.signedLetterUrl ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--primary-200)] bg-[var(--primary-50)]/60 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-white text-[var(--primary-700)] ring-1 ring-[var(--primary-200)]">
+                      <FileCheck2 size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--neutral-900)]">Surat sudah diunggah</p>
+                      <p className="text-xs text-[var(--neutral-600)]">
+                        Tinjau surat sebelum menyetujui pengajuan.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href={req.signedLetterUrl}
+                    target="_blank"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--primary-700)] px-3 text-xs font-semibold text-white shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--primary-800)]"
+                  >
+                    <FileText size={14} />
+                    Lihat Surat
+                  </Link>
+                </div>
+              ) : (
+                <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--neutral-300)] bg-[var(--neutral-50)] p-4 text-sm text-[var(--neutral-600)]">
+                  Pengaju belum mengunggah surat yang sudah divalidasi.
+                </div>
+              )}
+            </div>
+          </div>
+
           {actions && (
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-6 py-4">
