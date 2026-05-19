@@ -17,6 +17,7 @@ import {
   GraduationCap,
   LogOut,
   MessageCircle,
+  Mail,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/types';
@@ -54,6 +55,7 @@ const MENUS: Record<Role, MenuItem[]> = {
     { label: 'Blokir Jadwal', href: '/dashboard/admin-unit/blocks', icon: Lock },
     { label: 'Kelola Fasilitas', href: '/dashboard/admin-unit/facilities', icon: Settings },
     { label: 'Integrasi WhatsApp', href: '/dashboard/admin-unit/whatsapp', icon: MessageCircle },
+    { label: 'Integrasi Email', href: '/dashboard/admin-unit/email', icon: Mail },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
     { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
     { label: 'Profil', href: '/dashboard/profile', icon: User },

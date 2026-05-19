@@ -1,6 +1,7 @@
 import 'server-only';
 import { execute, query } from '@/lib/db';
 import { sendWhatsApp } from '@/lib/baileys';
+import { sendEmail } from '@/lib/mailer';
 import type { Notification, Role } from '@/types';
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'FASKO';
@@ -15,27 +16,38 @@ export async function createNotification(
   title: string,
   message: string,
   link?: string | null,
-  options?: { skipWA?: boolean }
+  options?: { skipWA?: boolean; skipEmail?: boolean }
 ) {
   await execute(
     'INSERT INTO notifications (userId, title, message, link) VALUES (?,?,?,?)',
     [userId, title, message, link ?? null]
   );
-  if (options?.skipWA) return;
-  const user = await query<{ name: string; phone: string | null }>(
-    'SELECT name, phone FROM users WHERE id = ?',
+  if (options?.skipWA && options?.skipEmail) return;
+  const user = await query<{ name: string; email: string; phone: string | null }>(
+    'SELECT name, email, phone FROM users WHERE id = ?',
     [userId]
   );
-  if (user[0]?.phone) {
+  if (!user[0]) return;
+
+  if (!options?.skipWA && user[0].phone) {
     void sendWhatsApp(user[0].phone, buildWAMessage(user[0].name, title, message)).catch(() => {});
+  }
+  if (!options?.skipEmail && user[0].email) {
+    void sendEmail({
+      to: user[0].email,
+      subject: `[${APP_NAME}] ${title}`,
+      title,
+      body: message,
+      link: link ?? null,
+    }).catch(() => {});
   }
 }
 
 export async function createNotificationForRole(role: Role, title: string, message: string, link?: string | null) {
   const users = await query<{ id: number }>('SELECT id FROM users WHERE role = ?', [role]);
-  // staff-targeted: in-app only, never blast WA
+  // staff-targeted: in-app only, never blast WA or email
   await Promise.all(
-    users.map((u) => createNotification(u.id, title, message, link, { skipWA: true }))
+    users.map((u) => createNotification(u.id, title, message, link, { skipWA: true, skipEmail: true }))
   );
 }
 
