@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Toaster } from '@/components/ui/Toaster';
+import { TooltipProvider } from '@/components/ui/Tooltip';
 import './globals.css';
 
 const inter = Inter({
@@ -23,7 +25,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="id" className={`${inter.variable} ${jetbrains.variable}`}>
       <body className="min-h-screen bg-[var(--neutral-50)] text-[var(--neutral-900)] antialiased">
-        {children}
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+        <Toaster />
       </body>
     </html>
   );

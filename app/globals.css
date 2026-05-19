@@ -113,6 +113,29 @@ textarea::placeholder {
   100% { background-position: 200% 0; }
 }
 
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes zoomIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes zoomOut { from { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -50%) scale(0.97); } }
+@keyframes slideInTop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInBottom { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+[data-state='open'] { animation-fill-mode: both; animation-duration: 160ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+[data-state='closed'] { animation-fill-mode: both; animation-duration: 140ms; animation-timing-function: cubic-bezier(0.4, 0, 1, 1); }
+
+[role='dialog'][data-state='open'] { animation-name: zoomIn; }
+[role='dialog'][data-state='closed'] { animation-name: zoomOut; }
+
+[role='menu'][data-state='open'][data-side='bottom'] { animation-name: slideInTop; }
+[role='menu'][data-state='open'][data-side='top'] { animation-name: slideInBottom; }
+[role='menu'][data-state='closed'] { animation-name: fadeOut; }
+
+[role='tooltip'][data-state='delayed-open'] { animation-name: fadeIn; animation-duration: 120ms; }
+[role='tooltip'][data-state='closed'] { animation-name: fadeOut; animation-duration: 100ms; }
+
+[data-radix-dialog-overlay][data-state='open'] { animation-name: fadeIn; }
+[data-radix-dialog-overlay][data-state='closed'] { animation-name: fadeOut; }
+
 .skeleton {
   background: linear-gradient(
     90deg,
