@@ -46,7 +46,7 @@ function iconFor(category: string): LucideIcon {
 export default async function FacilitiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kategori?: string; lokasi?: string; tanggal?: string }>;
+  searchParams: Promise<{ kategori?: string; lokasi?: string; tanggal?: string; q?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -55,6 +55,7 @@ export default async function FacilitiesPage({
   const kategori = sp.kategori?.trim() || '';
   const lokasi = sp.lokasi?.trim() || '';
   const tanggal = sp.tanggal?.trim() || '';
+  const q = sp.q?.trim().toLowerCase() || '';
 
   const adminBureau = user.role === 'ADMIN_UNIT' ? (user.bureauScope as ManagingUnit | null) : null;
   const allFacilities = adminBureau
@@ -99,6 +100,10 @@ export default async function FacilitiesPage({
     if (kategori && f.category !== kategori) return false;
     if (lokasi && f.location !== lokasi) return false;
     if (tanggal && unavailableIds.has(f.id)) return false;
+    if (q) {
+      const hay = `${f.name} ${f.location ?? ''} ${f.category}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
