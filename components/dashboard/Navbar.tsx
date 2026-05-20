@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronRight } from 'lucide-react';
+import { Bell, ChevronRight, User } from 'lucide-react';
 import type { Role } from '@/types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 
@@ -76,6 +76,18 @@ export function Navbar({ unread }: { role: Role; unread: number }) {
             </Link>
           </TooltipTrigger>
           <TooltipContent>Notifikasi</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/dashboard/profile"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)]"
+              aria-label="Profil"
+            >
+              <User className="h-4 w-4" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Profil</TooltipContent>
         </Tooltip>
       </div>
     </header>

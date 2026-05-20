@@ -32,22 +32,16 @@ const MENUS: Record<Role, MenuItem[]> = {
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
     { label: 'Ajukan Peminjaman', href: '/dashboard/pengurus/requests/new', icon: PlusCircle },
     { label: 'Status Peminjaman', href: '/dashboard/pengurus/requests', icon: ListTodo },
-    { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
-    { label: 'Profil', href: '/dashboard/profile', icon: User },
   ],
   BIRO_III: [
     { label: 'Beranda', href: '/dashboard/biro-iii', icon: Home },
     { label: 'Antrian Validasi', href: '/dashboard/biro-iii/requests', icon: Inbox },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
-    { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
-    { label: 'Profil', href: '/dashboard/profile', icon: User },
   ],
   WR3_WD3: [
     { label: 'Beranda', href: '/dashboard/wr3-wd3', icon: Home },
     { label: 'Antrian Validasi', href: '/dashboard/wr3-wd3/requests', icon: Inbox },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
-    { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
-    { label: 'Profil', href: '/dashboard/profile', icon: User },
   ],
   ADMIN_UNIT: [
     { label: 'Beranda', href: '/dashboard/admin-unit', icon: Home },
@@ -57,15 +51,11 @@ const MENUS: Record<Role, MenuItem[]> = {
     { label: 'Integrasi WhatsApp', href: '/dashboard/admin-unit/whatsapp', icon: MessageCircle },
     { label: 'Integrasi Email', href: '/dashboard/admin-unit/email', icon: Mail },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
-    { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
-    { label: 'Profil', href: '/dashboard/profile', icon: User },
   ],
   SUPER_ADMIN: [
     { label: 'Beranda', href: '/dashboard', icon: Home },
     { label: 'Manajemen User', href: '/dashboard/super-admin/users', icon: Users },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
-    { label: 'Notifikasi', href: '/dashboard/notifications', icon: Bell, badgeKey: 'unread' },
-    { label: 'Profil', href: '/dashboard/profile', icon: Settings },
   ],
 };
 
