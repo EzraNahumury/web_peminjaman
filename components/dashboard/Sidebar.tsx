@@ -123,8 +123,12 @@ export function Sidebar({
             {SECTION_LABEL[role]}
           </p>
           <ul className="space-y-0.5">
-            {menu.map((m) => {
-              const active = path === m.href || (m.href !== '/dashboard' && path.startsWith(m.href));
+            {(() => {
+              const longest = menu
+                .filter((m) => path === m.href || path.startsWith(m.href + '/'))
+                .reduce<string>((acc, m) => (m.href.length > acc.length ? m.href : acc), '');
+              return menu.map((m) => {
+              const active = m.href === longest;
               const Icon = m.icon;
               const badge = m.badgeKey === 'unread' && unread > 0 ? unread : null;
               return (
@@ -161,7 +165,8 @@ export function Sidebar({
                   </Link>
                 </li>
               );
-            })}
+            });
+            })()}
           </ul>
         </nav>
 
