@@ -106,11 +106,18 @@ export default async function FacilitiesPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-[26px] font-bold tracking-tight text-[var(--neutral-900)]">Daftar Fasilitas</h1>
-        <p className="mt-1 text-sm text-[var(--neutral-500)]">
-          {allFacilities.length} fasilitas aktif. Gunakan filter untuk menyaring kategori, lokasi, atau ketersediaan tanggal.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--primary-50)] px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary-500)]" />
+            Katalog Fasilitas
+          </span>
+          <h1 className="mt-2 text-[26px] font-bold tracking-tight text-[var(--neutral-900)]">Daftar Fasilitas</h1>
+          <p className="mt-1 max-w-2xl text-sm text-[var(--neutral-500)]">
+            {allFacilities.length} fasilitas aktif tersedia. Saring berdasarkan kategori, lokasi, atau ketersediaan
+            di tanggal tertentu.
+          </p>
+        </div>
       </div>
 
       <FacilitiesFilterBar categories={categories} locations={locations} total={filtered.length} />
