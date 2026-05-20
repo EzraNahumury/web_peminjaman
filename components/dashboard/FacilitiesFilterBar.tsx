@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useTransition } from 'react';
+import { useRef, useTransition } from 'react';
 import { Calendar as CalendarIcon, ChevronDown, Layers, MapPin, RotateCcw, Search } from 'lucide-react';
 import {
   DropdownMenu,
@@ -74,29 +74,7 @@ export function FacilitiesFilterBar({ categories, locations, total }: Props) {
           onPick={(v) => update({ lokasi: v })}
         />
 
-        <label
-          className={`relative inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border px-3 text-[12.5px] transition-colors ${
-            tanggal
-              ? 'border-[var(--primary-300)] bg-[var(--primary-50)] text-[var(--primary-900)]'
-              : 'border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] hover:border-[var(--neutral-300)]'
-          }`}
-        >
-          <CalendarIcon size={13} className={tanggal ? 'text-[var(--primary-700)]' : 'text-[var(--neutral-500)]'} />
-          {tanggal ? (
-            <span className="font-semibold">
-              {new Date(tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
-          ) : (
-            <span className="text-[var(--neutral-500)]">Tanggal</span>
-          )}
-          <input
-            type="date"
-            value={tanggal}
-            onChange={(e) => update({ tanggal: e.target.value })}
-            className="absolute inset-0 cursor-pointer opacity-0"
-            aria-label="Filter tanggal"
-          />
-        </label>
+        <DateChip value={tanggal} onChange={(v) => update({ tanggal: v })} />
 
         <span className="ml-auto inline-flex items-center gap-2 rounded-full bg-[var(--neutral-100)] px-3 py-1 text-[11px] text-[var(--neutral-600)]">
           <span className="text-[13px] font-bold tabular-nums text-[var(--neutral-900)]">{total}</span>
@@ -115,6 +93,62 @@ export function FacilitiesFilterBar({ categories, locations, total }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function DateChip({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const active = Boolean(value);
+
+  function open() {
+    const el = ref.current;
+    if (!el) return;
+    // showPicker is the modern API; fall back to focus + click for older browsers.
+    if (typeof (el as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') {
+      try {
+        (el as HTMLInputElement & { showPicker: () => void }).showPicker();
+        return;
+      } catch {
+        /* ignore */
+      }
+    }
+    el.focus();
+    el.click();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={open}
+        className={`inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border px-3 text-[12.5px] transition-colors ${
+          active
+            ? 'border-[var(--primary-300)] bg-[var(--primary-50)] text-[var(--primary-900)]'
+            : 'border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] hover:border-[var(--neutral-300)]'
+        }`}
+      >
+        <CalendarIcon size={13} className={active ? 'text-[var(--primary-700)]' : 'text-[var(--neutral-500)]'} />
+        {active ? (
+          <span className="font-semibold">
+            <span className="text-[10.5px] font-medium uppercase tracking-wider text-[var(--primary-700)]/70">
+              Tanggal:
+            </span>{' '}
+            {new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+        ) : (
+          <span className="text-[var(--neutral-600)]">Tanggal</span>
+        )}
+      </button>
+      <input
+        ref={ref}
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute h-0 w-0 opacity-0"
+        tabIndex={-1}
+        aria-hidden
+      />
+    </>
   );
 }
 
