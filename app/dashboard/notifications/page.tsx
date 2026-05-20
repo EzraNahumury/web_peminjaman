@@ -183,16 +183,25 @@ export default async function NotificationsPage({
 
         {/* Notification list */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[12.5px] text-[var(--neutral-600)]">
-              <strong className="font-semibold text-[var(--neutral-900)]">{filtered.length}</strong> notifikasi
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-baseline gap-2">
+              <p className="text-[15px] font-semibold text-[var(--neutral-900)]">
+                {filtered.length} notifikasi
+              </p>
+              {counts.unread > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-50)] px-2 py-0.5 text-[11px] font-medium text-[var(--primary-800)] ring-1 ring-[var(--primary-100)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary-500)]" />
+                  {counts.unread} belum dibaca
+                </span>
+              )}
+            </div>
             {counts.unread > 0 && (
               <form action={markAllNotificationsAsRead}>
                 <button
                   type="submit"
-                  className="text-[12px] font-medium text-[var(--primary-700)] hover:text-[var(--primary-800)]"
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white px-3 py-1.5 text-[12px] font-medium text-[var(--neutral-700)] transition-colors hover:bg-[var(--neutral-50)]"
                 >
+                  <CheckCircle2 size={13} />
                   Tandai semua dibaca
                 </button>
               </form>
@@ -205,56 +214,18 @@ export default async function NotificationsPage({
                 <Bell size={20} />
               </div>
               <p className="mt-3 text-sm font-medium text-[var(--neutral-800)]">Tidak ada notifikasi</p>
-              <p className="mt-1 text-xs text-[var(--neutral-500)]">Pilih saringan lain untuk melihat notifikasi.</p>
+              <p className="mt-1 text-xs text-[var(--neutral-500)]">
+                Pilih saringan lain untuk melihat notifikasi.
+              </p>
             </div>
           ) : (
-            <ul className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-xs)]">
-              {filtered.map((n, idx) => {
-                const kind = categorize(n);
-                const p = PILL[kind];
-                const created = new Date(n.createdAt);
-                const isNew = !n.isRead && Date.now() - created.getTime() < 6 * 3600 * 1000;
-                return (
-                  <li
-                    key={n.id}
-                    className={
-                      idx === 0
-                        ? ''
-                        : 'border-t border-[var(--neutral-100)]'
-                    }
-                  >
-                    <Row link={n.link} className={!n.isRead ? 'bg-[var(--primary-50)]/30' : ''}>
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] ring-1 ${p.iconBg}`}>
-                        {p.icon}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${p.bg} ${p.fg}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${p.dot}`} />
-                            {p.label}
-                          </span>
-                          <span className="text-[11px] text-[var(--neutral-500)]">{relativeTime(created)}</span>
-                          {isNew && (
-                            <span className="rounded-sm bg-[var(--accent-gold)] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-white">
-                              Baru
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1 text-[13.5px] font-semibold text-[var(--neutral-900)]">{n.title}</p>
-                        <p className="mt-0.5 text-[12.5px] leading-relaxed text-[var(--neutral-600)]">{n.message}</p>
-                      </div>
-                      {n.link && <ChevronRight size={15} className="self-center text-[var(--neutral-300)]" />}
-                    </Row>
-                  </li>
-                );
-              })}
-            </ul>
+            <NotificationGroups items={filtered} />
           )}
 
           {filtered.length > 0 && (
-            <div className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white p-4 text-center text-[11.5px] text-[var(--neutral-500)]">
-              Menampilkan {filtered.length} notifikasi terbaru. Notifikasi lebih dari 50 entry akan otomatis tidak ditampilkan.
-            </div>
+            <p className="px-1 text-center text-[11px] text-[var(--neutral-400)]">
+              Menampilkan {filtered.length} notifikasi terbaru. Riwayat lebih dari 50 entri otomatis disembunyikan.
+            </p>
           )}
         </div>
       </div>
@@ -262,25 +233,120 @@ export default async function NotificationsPage({
   );
 }
 
-function Row({
-  link,
-  className,
-  children,
-}: {
-  link: string | null;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const inner = (
-    <div className={`flex items-start gap-3 px-5 py-4 transition-colors hover:bg-[var(--neutral-50)] ${className ?? ''}`}>
-      {children}
+function bucketOf(d: Date): 'today' | 'yesterday' | 'week' | 'older' {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfYesterday = startOfToday - 86_400_000;
+  const startOfWeek = startOfToday - 6 * 86_400_000;
+  const t = d.getTime();
+  if (t >= startOfToday) return 'today';
+  if (t >= startOfYesterday) return 'yesterday';
+  if (t >= startOfWeek) return 'week';
+  return 'older';
+}
+
+const BUCKET_LABEL: Record<'today' | 'yesterday' | 'week' | 'older', string> = {
+  today: 'Hari ini',
+  yesterday: 'Kemarin',
+  week: '7 hari terakhir',
+  older: 'Lebih lama',
+};
+
+function NotificationGroups({ items }: { items: Notification[] }) {
+  const groups = {
+    today: [] as Notification[],
+    yesterday: [] as Notification[],
+    week: [] as Notification[],
+    older: [] as Notification[],
+  };
+  for (const n of items) {
+    groups[bucketOf(new Date(n.createdAt))].push(n);
+  }
+
+  return (
+    <div className="space-y-6">
+      {(['today', 'yesterday', 'week', 'older'] as const).map((k) => {
+        const list = groups[k];
+        if (list.length === 0) return null;
+        return (
+          <section key={k}>
+            <div className="mb-2 flex items-center gap-2 px-1">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--neutral-500)]">
+                {BUCKET_LABEL[k]}
+              </p>
+              <span className="h-px flex-1 bg-[var(--neutral-200)]" />
+              <span className="text-[10.5px] font-medium text-[var(--neutral-400)]">{list.length}</span>
+            </div>
+            <ul className="space-y-1.5">
+              {list.map((n) => (
+                <NotificationCard key={n.id} n={n} />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
-  return link ? (
-    <Link href={link} className="block">
-      {inner}
-    </Link>
+}
+
+function NotificationCard({ n }: { n: Notification }) {
+  const kind = categorize(n);
+  const p = PILL[kind];
+  const created = new Date(n.createdAt);
+  const isNew = !n.isRead && Date.now() - created.getTime() < 6 * 3600 * 1000;
+  const unread = !n.isRead;
+
+  const inner = (
+    <article
+      className={
+        'group relative flex items-start gap-3 rounded-[var(--radius-lg)] border bg-white px-4 py-3.5 shadow-[var(--shadow-xs)] transition-all hover:-translate-y-0.5 hover:border-[var(--neutral-300)] hover:shadow-[var(--shadow-sm)] ' +
+        (unread ? 'border-[var(--primary-100)] bg-[var(--primary-50)]/40' : 'border-[var(--neutral-200)]')
+      }
+    >
+      {unread && (
+        <span className="absolute left-0 top-3 h-[calc(100%-1.5rem)] w-[3px] rounded-r-full bg-[var(--primary-500)]" />
+      )}
+      <div
+        className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ${p.iconBg}`}
+      >
+        {p.icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h3 className="text-[14px] font-semibold leading-snug text-[var(--neutral-900)]">{n.title}</h3>
+          {isNew && (
+            <span className="rounded-sm bg-[var(--accent-gold)] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-white">
+              Baru
+            </span>
+          )}
+        </div>
+        <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-[var(--neutral-600)]">{n.message}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${p.bg} ${p.fg}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${p.dot}`} />
+            {p.label}
+          </span>
+          <span className="text-[var(--neutral-500)]">{relativeTime(created)}</span>
+        </div>
+      </div>
+      {n.link && (
+        <ChevronRight
+          size={15}
+          className="mt-3 shrink-0 self-start text-[var(--neutral-300)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--neutral-500)]"
+        />
+      )}
+    </article>
+  );
+
+  return n.link ? (
+    <li>
+      <Link href={n.link} className="block">
+        {inner}
+      </Link>
+    </li>
   ) : (
-    <div>{inner}</div>
+    <li>{inner}</li>
   );
 }
