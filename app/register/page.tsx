@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { registerPengurus, type FormState } from '@/app/actions/auth';
 import { Field, Input } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 
 export default function RegisterPage() {
@@ -53,10 +54,10 @@ export default function RegisterPage() {
               <Input name="phone" required />
             </Field>
             <Field label="Password" error={errs.password} hint="Minimal 6 karakter" required>
-              <Input type="password" name="password" required autoComplete="new-password" />
+              <PasswordInput name="password" required autoComplete="new-password" />
             </Field>
             <Field label="Konfirmasi Password" error={errs.confirmPassword} required>
-              <Input type="password" name="confirmPassword" required autoComplete="new-password" />
+              <PasswordInput name="confirmPassword" required autoComplete="new-password" />
             </Field>
             <div className="sm:col-span-2">
               <Field label="NIM / NIDN / ID PIC (opsional)" error={errs.identityNumber}>

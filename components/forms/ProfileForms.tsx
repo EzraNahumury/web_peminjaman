@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Field, Input } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import {
   changePassword,
@@ -97,13 +98,13 @@ export function PasswordForm() {
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Password Lama" error={errs.currentPassword} required>
-          <Input type="password" name="currentPassword" required autoComplete="current-password" />
+          <PasswordInput name="currentPassword" required autoComplete="current-password" />
         </Field>
         <Field label="Password Baru" error={errs.newPassword} hint="Minimal 6 karakter" required>
-          <Input type="password" name="newPassword" required autoComplete="new-password" />
+          <PasswordInput name="newPassword" required autoComplete="new-password" />
         </Field>
         <Field label="Konfirmasi" error={errs.confirmPassword} required>
-          <Input type="password" name="confirmPassword" required autoComplete="new-password" />
+          <PasswordInput name="confirmPassword" required autoComplete="new-password" />
         </Field>
       </div>
       <Alert state={state} />

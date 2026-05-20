@@ -100,7 +100,7 @@ export default async function PengurusDashboard() {
               {formatWIBDate(new Date())}
             </p>
             <h1 className="mt-1.5 text-[26px] font-bold leading-tight tracking-tight sm:text-[28px]">
-              Halo, {firstName} <span className="inline-block">👋</span>
+              Halo, {firstName} <span className="inline-block"></span>
             </h1>
             <p className="mt-1.5 max-w-xl text-[13.5px] text-white/75">{heroLine}</p>
           </div>

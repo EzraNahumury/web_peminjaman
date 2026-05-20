@@ -12,10 +12,50 @@ type FacilityRow = [
 ];
 
 const FACILITIES: FacilityRow[] = [
-  // BIRO I — Ruang Pembelajaran
-  ['Ruang Kelas Biasa', 'Ruang Kelas', 'BIRO_I', 'Gedung Akademik', 40, 'Ruang kelas standar untuk perkuliahan reguler'],
-  ['Ruang Hybrid', 'Ruang Kelas', 'BIRO_I', 'Gedung Akademik', 40, 'Ruang kelas dengan dukungan kuliah hybrid (online + offline)'],
-  ['Ruang Tutorial', 'Ruang Tutorial', 'BIRO_I', 'Gedung Akademik', 25, 'Ruang tutorial untuk sesi pembelajaran kelompok kecil'],
+  // BIRO I — Ruang Pembelajaran (per ruangan)
+  // Gedung B
+  ['Ruang B.3.1', 'Ruang Kelas', 'BIRO_I', 'Gedung B Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang B.3.2', 'Ruang Kelas', 'BIRO_I', 'Gedung B Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang B.3.3', 'Ruang Kelas', 'BIRO_I', 'Gedung B Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang B.3.4', 'Ruang Kelas', 'BIRO_I', 'Gedung B Lt.3', 40, 'Ruang Kelas Biasa'],
+  // Gedung C
+  ['Ruang C.3.7', 'Ruang Kelas', 'BIRO_I', 'Gedung C Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang C.3.8', 'Ruang Kelas', 'BIRO_I', 'Gedung C Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang C.3.9', 'Ruang Kelas', 'BIRO_I', 'Gedung C Lt.3', 40, 'Ruang Kelas Biasa'],
+  // Gedung D
+  ['Ruang D.1.1', 'Ruang Hybrid', 'BIRO_I', 'Gedung D Lt.1', 40, 'Hybrid'],
+  ['Ruang D.1.2', 'Ruang Tutorial', 'BIRO_I', 'Gedung D Lt.1', 25, 'Ruang Tutorial'],
+  ['Ruang D.1.3', 'Ruang Tutorial', 'BIRO_I', 'Gedung D Lt.1', 25, 'Ruang Tutorial'],
+  ['Ruang D.2.1', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.2.2', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.2.3', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.2.4', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.2.5', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.3.1', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.3.2', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.3.4', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang D.3.5', 'Ruang Kelas', 'BIRO_I', 'Gedung D Lt.3', 40, 'Ruang Kelas Biasa'],
+  // Gedung E
+  ['Ruang E.1.2', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.1', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.2.1', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.2.2', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.2.3', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.2.4', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.2.5', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.3.1', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.3.2', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.3.3', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.3.4', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.3.5', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.3', 40, 'Ruang Kelas Biasa'],
+  ['Ruang E.3.6', 'Ruang Kelas', 'BIRO_I', 'Gedung E Lt.3', 40, 'Ruang Kelas Biasa'],
+  // Gedung G
+  ['Ruang G.3.4', 'Ruang Kelas', 'BIRO_I', 'Gedung G Lt.3', 40, 'Ruang Kelas Biasa'],
+  // Gedung H
+  ['Ruang H.2.1', 'Ruang Kelas', 'BIRO_I', 'Gedung H Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang H.2.2', 'Ruang Kelas', 'BIRO_I', 'Gedung H Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang H.2.3', 'Ruang Kelas', 'BIRO_I', 'Gedung H Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang H.2.4', 'Ruang Kelas', 'BIRO_I', 'Gedung H Lt.2', 40, 'Ruang Kelas Biasa'],
+  ['Ruang H.2.5', 'Ruang Kelas', 'BIRO_I', 'Gedung H Lt.2', 40, 'Ruang Kelas Biasa'],
 
   // BIRO IV — Ruangan & Peralatan Pendukung
   ['Ruang H.1.1', 'Ruangan', 'BIRO_IV', 'Gedung H Lt.1', 60, 'Ruang serbaguna'],
@@ -102,13 +142,13 @@ type ActivityTemplate = {
 const ACTIVITIES: ActivityTemplate[] = [
   { name: 'Workshop AI & Pendidikan', purpose: 'Seminar / Workshop', description: 'Workshop pengenalan AI untuk pendidikan dengan pembicara dosen FTI dan praktisi industri.', participants: 120, facilityName: 'Auditorium Koinonia', hours: 4 },
   { name: 'Latihan Rutin Paduan Suara', purpose: 'Latihan rutin', description: 'Latihan vokal mingguan persiapan konser semester.', participants: 35, facilityName: 'Ruang H.1.1', hours: 2 },
-  { name: 'Rapat Koordinasi Pengurus', purpose: 'Rapat internal', description: 'Rapat program kerja bulanan pengurus harian.', participants: 18, facilityName: 'Ruang Tutorial', hours: 2 },
+  { name: 'Rapat Koordinasi Pengurus', purpose: 'Rapat internal', description: 'Rapat program kerja bulanan pengurus harian.', participants: 18, facilityName: 'Ruang D.1.2', hours: 2 },
   { name: 'Persekutuan Doa Mahasiswa', purpose: 'Ibadah / Persekutuan', description: 'Persekutuan doa rutin mingguan untuk seluruh mahasiswa.', participants: 60, facilityName: 'Ruang Rudi Budiman', hours: 2 },
-  { name: 'Pelatihan Public Speaking', purpose: 'Pelatihan', description: 'Pelatihan komunikasi publik untuk pengurus organisasi.', participants: 25, facilityName: 'Ruang Tutorial', hours: 3 },
+  { name: 'Pelatihan Public Speaking', purpose: 'Pelatihan', description: 'Pelatihan komunikasi publik untuk pengurus organisasi.', participants: 25, facilityName: 'Ruang D.1.3', hours: 3 },
   { name: 'Pemutaran Film Dokumenter', purpose: 'Screening film', description: 'Pemutaran film dokumenter lingkungan dilanjutkan diskusi panel.', participants: 80, facilityName: 'Ruang Harun', hours: 3 },
-  { name: 'Open Recruitment Pengurus', purpose: 'Rekrutmen', description: 'Sesi seleksi calon pengurus periode 2026/2027.', participants: 40, facilityName: 'Ruang Hybrid', hours: 4 },
+  { name: 'Open Recruitment Pengurus', purpose: 'Rekrutmen', description: 'Sesi seleksi calon pengurus periode 2026/2027.', participants: 40, facilityName: 'Ruang D.1.1', hours: 4 },
   { name: 'Seminar Nasional Teknologi', purpose: 'Seminar', description: 'Seminar nasional menghadirkan pembicara industri & akademisi.', participants: 200, facilityName: 'Auditorium Koinonia', hours: 5 },
-  { name: 'Workshop Fotografi Dasar', purpose: 'Workshop', description: 'Pengenalan dasar komposisi & pengoperasian kamera.', participants: 22, facilityName: 'Ruang Tutorial', hours: 3 },
+  { name: 'Workshop Fotografi Dasar', purpose: 'Workshop', description: 'Pengenalan dasar komposisi & pengoperasian kamera.', participants: 22, facilityName: 'Ruang D.1.2', hours: 3 },
   { name: 'Recording Podcast Episode 8', purpose: 'Dokumentasi audio', description: 'Recording episode podcast organisasi.', participants: 4, facilityName: 'Studio Podcast', hours: 2 },
   { name: 'Bedah Buku & Diskusi', purpose: 'Diskusi', description: 'Bedah buku karya alumni dengan moderator dosen.', participants: 50, facilityName: 'Ruang Rudi Budiman', hours: 3 },
   { name: 'Pelatihan Programming Web', purpose: 'Pelatihan teknis', description: 'Pelatihan dasar pengembangan web menggunakan framework modern.', participants: 28, facilityName: 'Lab Komputer A', hours: 4 },

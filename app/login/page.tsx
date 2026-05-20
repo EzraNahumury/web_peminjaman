@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { login, type FormState } from '@/app/actions/auth';
 import { Field, Input } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 
 function LoginForm() {
@@ -58,7 +59,7 @@ function LoginForm() {
             <Input type="email" name="email" placeholder="nama@students.ukdw.ac.id" required autoComplete="email" />
           </Field>
           <Field label="Password" error={errs.password}>
-            <Input type="password" name="password" placeholder="••••••••" required autoComplete="current-password" />
+            <PasswordInput name="password" placeholder="••••••••" required autoComplete="current-password" />
           </Field>
           {state?.error && (
             <motion.div
