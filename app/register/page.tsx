@@ -44,8 +44,19 @@ export default function RegisterPage() {
             <Field label="Nama Lengkap" error={errs.name} required>
               <Input name="name" required />
             </Field>
-            <Field label="Email" error={errs.email} required>
-              <Input type="email" name="email" required autoComplete="email" />
+            <Field
+              label="Email"
+              error={errs.email}
+              hint="Wajib pakai email kampus @students.ukdw.ac.id"
+              required
+            >
+              <Input
+                type="email"
+                name="email"
+                placeholder="nama@students.ukdw.ac.id"
+                required
+                autoComplete="email"
+              />
             </Field>
             <Field label="Nama Organisasi / LK / OK" error={errs.organizationName} required>
               <Input name="organizationName" required />

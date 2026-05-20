@@ -1,9 +1,18 @@
 import { z } from 'zod';
 
+const STUDENT_EMAIL_DOMAIN = '@students.ukdw.ac.id';
+
 export const RegisterSchema = z
   .object({
     name: z.string().trim().min(2, 'Nama minimal 2 karakter'),
-    email: z.string().trim().toLowerCase().email('Email tidak valid'),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .email('Email tidak valid')
+      .refine((v) => v.endsWith(STUDENT_EMAIL_DOMAIN), {
+        message: `Wajib pakai email kampus ${STUDENT_EMAIL_DOMAIN}`,
+      }),
     password: z.string().min(6, 'Password minimal 6 karakter'),
     confirmPassword: z.string().min(6, 'Konfirmasi password minimal 6 karakter'),
     organizationName: z.string().trim().min(2, 'Nama organisasi wajib diisi'),
