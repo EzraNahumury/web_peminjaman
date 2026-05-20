@@ -101,6 +101,14 @@ export const MANAGING_UNIT_DESC: Record<ManagingUnit, string> = {
   LPAIP: 'Dokumentasi & Multimedia',
 };
 
+export const MANAGING_UNIT_HEAD: Record<ManagingUnit, string> = {
+  BIRO_I: 'Kepala Biro I — Akademik & Administrasi',
+  BIRO_IV: 'Kepala Biro IV — Sarana Prasarana',
+  PPLK: 'Kepala Pusat Pengembangan & Layanan Kemahasiswaan (PPLK)',
+  KRT: 'Kepala Bagian Kerumahtanggaan (KRT)',
+  LPAIP: 'Kepala Lembaga Pengembangan Akademik dan Inovasi Pembelajaran (LPAIP)',
+};
+
 export interface Facility {
   id: number;
   name: string;
