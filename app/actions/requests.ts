@@ -58,6 +58,16 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
   const facility = await queryOne<Facility>('SELECT * FROM facilities WHERE id = ? AND isActive = 1', [d.facilityId]);
   if (!facility) return { error: 'Fasilitas tidak ditemukan / non-aktif' };
 
+  if (facility.capacity != null && d.participantCount != null && d.participantCount > facility.capacity) {
+    return {
+      fieldErrors: {
+        participantCount: [
+          `Jumlah peserta ${d.participantCount} melebihi kapasitas ${facility.name} (${facility.capacity}).`,
+        ],
+      },
+    };
+  }
+
   const start = new Date(d.startDateTime);
   const end = new Date(d.endDateTime);
   const blocks = await findBlocks(d.facilityId, start, end);
@@ -145,6 +155,18 @@ export async function updateRevisionRequest(
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
   const d = parsed.data;
+  const facility = await queryOne<Facility>('SELECT * FROM facilities WHERE id = ? AND isActive = 1', [d.facilityId]);
+  if (!facility) return { error: 'Fasilitas tidak ditemukan / non-aktif' };
+  if (facility.capacity != null && d.participantCount != null && d.participantCount > facility.capacity) {
+    return {
+      fieldErrors: {
+        participantCount: [
+          `Jumlah peserta ${d.participantCount} melebihi kapasitas ${facility.name} (${facility.capacity}).`,
+        ],
+      },
+    };
+  }
+
   const start = new Date(d.startDateTime);
   const end = new Date(d.endDateTime);
   const blocks = await findBlocks(d.facilityId, start, end);

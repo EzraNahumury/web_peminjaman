@@ -220,15 +220,31 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Jumlah peserta" error={errs.participantCount}>
+              <Field
+                label="Jumlah peserta"
+                error={errs.participantCount}
+                hint={
+                  selectedFacility?.capacity != null
+                    ? `Maks. ${selectedFacility.capacity} (kapasitas ${selectedFacility.name})`
+                    : undefined
+                }
+              >
                 <Input
                   type="number"
                   name="participantCount"
                   value={participants}
                   onChange={(e) => setParticipants(e.target.value)}
                   min={0}
+                  max={selectedFacility?.capacity ?? undefined}
                   placeholder="0"
                 />
+                {selectedFacility?.capacity != null &&
+                  participants !== '' &&
+                  Number(participants) > selectedFacility.capacity && (
+                    <p className="mt-1.5 text-xs font-medium text-rose-600">
+                      Melebihi kapasitas {selectedFacility.name} ({selectedFacility.capacity}).
+                    </p>
+                  )}
               </Field>
               <Field label="Penanggung jawab" error={errs.personInCharge} required>
                 <Input
