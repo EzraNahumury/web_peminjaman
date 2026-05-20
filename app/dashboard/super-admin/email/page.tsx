@@ -5,8 +5,8 @@ import { EmailPanel } from '@/components/dashboard/EmailPanel';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminEmailPage() {
-  await requireRole('ADMIN_UNIT');
+export default async function SuperAdminEmailPage() {
+  await requireRole('SUPER_ADMIN');
   const initial = await getEmailStatus();
   return (
     <div className="space-y-6">

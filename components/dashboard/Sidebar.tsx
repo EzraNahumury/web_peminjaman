@@ -49,12 +49,12 @@ const MENUS: Record<Role, MenuItem[]> = {
     { label: 'Blokir Jadwal', href: '/dashboard/admin-unit/blocks', icon: Lock },
     { label: 'Kelola Fasilitas', href: '/dashboard/admin-unit/facilities', icon: Settings },
     { label: 'Integrasi WhatsApp', href: '/dashboard/admin-unit/whatsapp', icon: MessageCircle },
-    { label: 'Integrasi Email', href: '/dashboard/admin-unit/email', icon: Mail },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
   ],
   SUPER_ADMIN: [
     { label: 'Beranda', href: '/dashboard', icon: Home },
     { label: 'Manajemen User', href: '/dashboard/super-admin/users', icon: Users },
+    { label: 'Integrasi Email', href: '/dashboard/super-admin/email', icon: Mail },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
   ],
 };

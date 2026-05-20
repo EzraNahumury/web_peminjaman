@@ -118,3 +118,46 @@ export async function removeOrganizationLogo(): Promise<void> {
   await execute('UPDATE users SET organizationLogoUrl = NULL WHERE id = ?', [session.userId]);
   revalidatePath('/dashboard/profile');
 }
+
+export async function uploadSignature(_prev: ProfileFormState, formData: FormData): Promise<ProfileFormState> {
+  const session = await verifySession();
+
+  const file = formData.get('signature');
+  if (!(file instanceof File) || file.size === 0) return { error: 'Pilih file tanda tangan terlebih dahulu' };
+  if (!ALLOWED_MIME.has(file.type)) return { error: 'Format harus PNG / JPG / WEBP' };
+  if (file.size > MAX_BYTES) return { error: 'Ukuran file maksimal 2 MB' };
+
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const fileName = `sig-${session.userId}-${Date.now()}.${ext}`;
+  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'signatures');
+  await fs.mkdir(uploadDir, { recursive: true });
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await fs.writeFile(path.join(uploadDir, fileName), buffer);
+
+  const url = `/uploads/signatures/${fileName}`;
+  const existing = await queryOne<{ signatureUrl: string | null }>(
+    'SELECT signatureUrl FROM users WHERE id = ?',
+    [session.userId]
+  );
+  if (existing?.signatureUrl) {
+    const old = path.join(process.cwd(), 'public', existing.signatureUrl.replace(/^\//, ''));
+    fs.unlink(old).catch(() => {});
+  }
+  await execute('UPDATE users SET signatureUrl = ? WHERE id = ?', [url, session.userId]);
+  revalidatePath('/dashboard/profile');
+  return { success: 'Tanda tangan berhasil diunggah.' };
+}
+
+export async function removeSignature(): Promise<void> {
+  const session = await verifySession();
+  const existing = await queryOne<{ signatureUrl: string | null }>(
+    'SELECT signatureUrl FROM users WHERE id = ?',
+    [session.userId]
+  );
+  if (existing?.signatureUrl) {
+    const old = path.join(process.cwd(), 'public', existing.signatureUrl.replace(/^\//, ''));
+    fs.unlink(old).catch(() => {});
+  }
+  await execute('UPDATE users SET signatureUrl = NULL WHERE id = ?', [session.userId]);
+  revalidatePath('/dashboard/profile');
+}

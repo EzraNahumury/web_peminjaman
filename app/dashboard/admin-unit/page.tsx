@@ -2,7 +2,17 @@ import { redirect } from 'next/navigation';
 import { requireRole, getCurrentUser } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { PageHeader, StatCard } from '@/components/ui/Card';
+import { BookingsTrendChart, CategoryBreakdownChart } from '@/components/dashboard/BookingsTrendChart';
 import { MANAGING_UNIT_LABEL, type ManagingUnit } from '@/types';
+
+const TREND_DAYS = 30;
+
+function fmtDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export default async function AdminUnitDashboard() {
   const session = await requireRole('ADMIN_UNIT');
@@ -37,6 +47,68 @@ export default async function AdminUnitDashboard() {
     : 'SELECT COUNT(*) c FROM facilities WHERE isActive = 1';
   const [{ c: facilities }] = await query<{ c: number }>(facilitiesSql, bureau ? [bureau] : []);
 
+  // Trend last 30 days
+  const trendSql = bureau
+    ? `SELECT DATE(fr.createdAt) d,
+              COUNT(*) total,
+              SUM(CASE WHEN fr.status = 'APPROVED' THEN 1 ELSE 0 END) approved
+       FROM facility_requests fr
+       JOIN facilities f ON f.id = fr.facilityId
+       WHERE fr.createdAt >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         AND f.managingUnit = ?
+       GROUP BY DATE(fr.createdAt)
+       ORDER BY d`
+    : `SELECT DATE(createdAt) d,
+              COUNT(*) total,
+              SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) approved
+       FROM facility_requests
+       WHERE createdAt >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY DATE(createdAt)
+       ORDER BY d`;
+  const trendRows = await query<{ d: string | Date; total: number; approved: number }>(
+    trendSql,
+    bureau ? [TREND_DAYS, bureau] : [TREND_DAYS]
+  );
+
+  const trendMap = new Map<string, { total: number; approved: number }>();
+  for (const r of trendRows) {
+    const key = typeof r.d === 'string' ? r.d.slice(0, 10) : fmtDate(r.d);
+    trendMap.set(key, { total: Number(r.total), approved: Number(r.approved) });
+  }
+  const trendData: { date: string; total: number; approved: number }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = TREND_DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = fmtDate(d);
+    const v = trendMap.get(key);
+    trendData.push({ date: key, total: v?.total ?? 0, approved: v?.approved ?? 0 });
+  }
+
+  // Category breakdown
+  const catSql = bureau
+    ? `SELECT f.category label, COUNT(*) value
+       FROM facility_requests fr
+       JOIN facilities f ON f.id = fr.facilityId
+       WHERE fr.createdAt >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         AND f.managingUnit = ?
+       GROUP BY f.category
+       ORDER BY value DESC
+       LIMIT 6`
+    : `SELECT f.category label, COUNT(*) value
+       FROM facility_requests fr
+       JOIN facilities f ON f.id = fr.facilityId
+       WHERE fr.createdAt >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY f.category
+       ORDER BY value DESC
+       LIMIT 6`;
+  const catRows = await query<{ label: string; value: number }>(
+    catSql,
+    bureau ? [TREND_DAYS, bureau] : [TREND_DAYS]
+  );
+  const catData = catRows.map((r) => ({ label: r.label, value: Number(r.value) }));
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -59,6 +131,23 @@ export default async function AdminUnitDashboard() {
           tone="slate"
           hint={`${blocks} jadwal terblokir`}
         />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <BookingsTrendChart
+            data={trendData}
+            title="Tren Peminjaman 30 Hari Terakhir"
+            subtitle={`Pengajuan masuk per hari untuk ${bureauLabel}`}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <CategoryBreakdownChart
+            data={catData}
+            title="Top Kategori"
+            subtitle="Distribusi 30 hari terakhir"
+          />
+        </div>
       </div>
     </div>
   );

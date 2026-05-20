@@ -78,6 +78,7 @@ export interface User {
   phone: string | null;
   identityNumber: string | null;
   organizationLogoUrl: string | null;
+  signatureUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

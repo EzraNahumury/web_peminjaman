@@ -10,8 +10,10 @@ import { Button } from '@/components/ui/Button';
 import {
   changePassword,
   removeOrganizationLogo,
+  removeSignature,
   updateProfile,
   uploadOrganizationLogo,
+  uploadSignature,
   type ProfileFormState,
 } from '@/app/actions/profile';
 import type { User } from '@/types';
@@ -266,6 +268,150 @@ export function LogoUploadForm({ user }: { user: User }) {
           <Button type="submit" disabled={pending}>
             <UploadCloud size={14} />
             {pending ? 'Mengunggah…' : 'Unggah Logo'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export function SignatureUploadForm({ user }: { user: User }) {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [pending, start] = useTransition();
+  const [removing, startRemove] = useTransition();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  function handleFile(file: File | null) {
+    if (!file) {
+      setPreview(null);
+      setFileName(null);
+      return;
+    }
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setPreview(typeof reader.result === 'string' ? reader.result : null);
+    reader.readAsDataURL(file);
+  }
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const file = fd.get('signature');
+    if (!(file instanceof File) || file.size === 0) {
+      toast.error('Pilih file tanda tangan dulu');
+      return;
+    }
+    start(async () => {
+      const res = await uploadSignature(undefined, fd);
+      if (res?.error) {
+        toast.error('Gagal mengunggah', { description: res.error });
+        return;
+      }
+      toast.success('Tanda tangan diperbarui', { description: 'TTD tersimpan & siap dicetak pada surat.' });
+      setPreview(null);
+      setFileName(null);
+      if (fileRef.current) fileRef.current.value = '';
+      router.refresh();
+    });
+  }
+
+  async function onRemove() {
+    if (!confirm('Hapus tanda tangan?')) return;
+    startRemove(async () => {
+      await removeSignature();
+      toast.success('Tanda tangan dihapus');
+      router.refresh();
+    });
+  }
+
+  const current = preview ?? user.signatureUrl ?? null;
+
+  return (
+    <div className="grid gap-5 sm:grid-cols-[240px_minmax(0,1fr)]">
+      {/* Preview pane */}
+      <div className="flex flex-col items-center gap-2.5">
+        <div className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-[var(--radius-lg)] border border-dashed border-[var(--neutral-300)] bg-[var(--neutral-50)]">
+          {current ? (
+            <Image
+              src={current}
+              alt="Tanda tangan"
+              width={220}
+              height={120}
+              unoptimized
+              className="h-full w-full object-contain p-3"
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-1.5 text-[var(--neutral-400)]">
+              <UploadCloud size={28} strokeWidth={1.5} />
+              <p className="text-[11px]">Belum ada TTD</p>
+            </div>
+          )}
+        </div>
+        <p className="text-[11px] text-[var(--neutral-500)]">
+          {user.signatureUrl ? 'TTD aktif · akan otomatis tertempel di surat' : 'Belum diunggah'}
+        </p>
+      </div>
+
+      {/* Upload pane */}
+      <form onSubmit={onSubmit} className="flex min-w-0 flex-col gap-4">
+        <label
+          htmlFor="signature-input"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const f = e.dataTransfer.files?.[0];
+            if (!f || !fileRef.current) return;
+            const dt = new DataTransfer();
+            dt.items.add(f);
+            fileRef.current.files = dt.files;
+            handleFile(f);
+          }}
+          className={`group flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border-2 border-dashed px-4 py-6 text-center transition-colors ${
+            dragOver
+              ? 'border-[var(--primary-500)] bg-[var(--primary-50)]'
+              : 'border-[var(--neutral-300)] bg-[var(--neutral-50)]/60 hover:border-[var(--primary-400)] hover:bg-[var(--primary-50)]/30'
+          }`}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[var(--primary-700)] ring-1 ring-[var(--neutral-200)]">
+            <Upload size={16} />
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-[var(--neutral-900)]">
+              {fileName ? fileName : 'Tarik & lepas atau klik untuk pilih file'}
+            </p>
+            <p className="mt-0.5 text-[11px] text-[var(--neutral-500)]">
+              PNG transparan disarankan · JPG / WEBP juga didukung · maks. 2 MB
+            </p>
+          </div>
+          <input
+            id="signature-input"
+            ref={fileRef}
+            type="file"
+            name="signature"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            className="sr-only"
+            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {user.signatureUrl && (
+            <Button type="button" variant="outline" onClick={onRemove} disabled={removing}>
+              <Trash2 size={14} />
+              {removing ? 'Menghapus…' : 'Hapus TTD'}
+            </Button>
+          )}
+          <Button type="submit" disabled={pending}>
+            <UploadCloud size={14} />
+            {pending ? 'Mengunggah…' : 'Unggah TTD'}
           </Button>
         </div>
       </form>

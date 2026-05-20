@@ -21,13 +21,15 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
       pengurusIdentity: string | null;
       pengurusOrg: string | null;
       pengurusLogoUrl: string | null;
+      pengurusSignatureUrl: string | null;
     }
   >(
     `SELECT fr.*,
             f.name AS facilityName, f.location AS facilityLocation,
             f.category AS facilityCategory, f.managingUnit,
             u.name AS pengurusName, u.identityNumber AS pengurusIdentity,
-            u.organizationName AS pengurusOrg, u.organizationLogoUrl AS pengurusLogoUrl
+            u.organizationName AS pengurusOrg, u.organizationLogoUrl AS pengurusLogoUrl,
+            u.signatureUrl AS pengurusSignatureUrl
      FROM facility_requests fr
      JOIN facilities f ON f.id = fr.facilityId
      JOIN users u ON u.id = fr.userId
@@ -45,15 +47,15 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
     redirect(`/dashboard/pengurus/requests/${req.id}`);
   }
 
-  const biroIII = await queryOne<{ name: string; identityNumber: string | null }>(
-    `SELECT u.name, u.identityNumber FROM approval_logs al
+  const biroIII = await queryOne<{ name: string; identityNumber: string | null; signatureUrl: string | null }>(
+    `SELECT u.name, u.identityNumber, u.signatureUrl FROM approval_logs al
      JOIN users u ON u.id = al.actorId
      WHERE al.requestId = ? AND al.action = 'APPROVE_BIRO_III'
      ORDER BY al.id DESC LIMIT 1`,
     [req.id]
   );
-  const wr3 = await queryOne<{ name: string; identityNumber: string | null }>(
-    `SELECT u.name, u.identityNumber FROM approval_logs al
+  const wr3 = await queryOne<{ name: string; identityNumber: string | null; signatureUrl: string | null }>(
+    `SELECT u.name, u.identityNumber, u.signatureUrl FROM approval_logs al
      JOIN users u ON u.id = al.actorId
      WHERE al.requestId = ? AND al.action = 'APPROVE_WR3_WD3'
      ORDER BY al.id DESC LIMIT 1`,
@@ -193,7 +195,7 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
               <td style={{ width: '50%', textAlign: 'center' }}>
                 <p style={{ margin: 0 }}>Hormat kami,</p>
                 <p style={{ margin: 0, fontWeight: 600 }}>Pengurus LK/OK</p>
-                <div style={{ height: 80 }} />
+                <SignatureBlock url={req.pengurusSignatureUrl} />
                 <p style={{ margin: 0, fontWeight: 700, textDecoration: 'underline' }}>
                   {req.pengurusName}
                 </p>
@@ -203,7 +205,7 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
               <td style={{ width: '50%', textAlign: 'center' }}>
                 <p style={{ margin: 0 }}>Menyetujui,</p>
                 <p style={{ margin: 0, fontWeight: 600 }}>Biro III Kemahasiswaan</p>
-                <div style={{ height: 80 }} />
+                <SignatureBlock url={biroIII?.signatureUrl ?? null} />
                 <p style={{ margin: 0, fontWeight: 700, textDecoration: 'underline' }}>
                   {biroIII?.name ?? '-'}
                 </p>
@@ -217,11 +219,26 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
           <p style={{ margin: 0 }}>Mengetahui,</p>
           <p style={{ margin: 0, fontWeight: 600 }}>Wakil Rektor III / Wakil Dekan III</p>
           <p style={{ margin: 0, fontSize: '11pt' }}>Bidang Kemahasiswaan</p>
-          <div style={{ height: 80 }} />
+          <SignatureBlock url={wr3?.signatureUrl ?? null} />
           <p style={{ margin: 0, fontWeight: 700, textDecoration: 'underline' }}>{wr3?.name ?? '-'}</p>
           <p style={{ margin: 0, fontSize: '11pt' }}>WR3 / WD3</p>
         </div>
       </div>
     </div>
   );
+}
+
+function SignatureBlock({ url }: { url: string | null }) {
+  if (url) {
+    return (
+      <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img
+          src={url}
+          alt="Tanda tangan"
+          style={{ maxHeight: 76, maxWidth: 180, objectFit: 'contain' }}
+        />
+      </div>
+    );
+  }
+  return <div style={{ height: 80 }} />;
 }

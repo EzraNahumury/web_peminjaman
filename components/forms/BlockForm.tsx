@@ -7,15 +7,31 @@ import { MANAGING_UNIT_LABEL, type Facility, type ManagingUnit } from '@/types';
 
 const UNIT_ORDER: ManagingUnit[] = ['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'];
 
-export function BlockForm({ facilities }: { facilities: Facility[] }) {
+export function BlockForm({
+  facilities,
+  canBlockAll = true,
+}: {
+  facilities: Facility[];
+  canBlockAll?: boolean;
+}) {
   const [state, action, pending] = useActionState<BlockFormState, FormData>(createFacilityBlock, undefined);
   const errs = state?.fieldErrors ?? {};
 
+  const defaultFacilityId = canBlockAll
+    ? 'ALL'
+    : facilities[0]
+    ? String(facilities[0].id)
+    : '';
+
   return (
     <form action={action} className="space-y-4">
-      <Field label="Fasilitas" error={errs.facilityId} hint="Pilih 'Semua Fasilitas' untuk memblokir seluruh kampus.">
-        <Select name="facilityId" defaultValue="ALL">
-          <option value="ALL">Semua Fasilitas (block kampus-wide)</option>
+      <Field
+        label="Fasilitas"
+        error={errs.facilityId}
+        hint={canBlockAll ? "Pilih 'Semua Fasilitas' untuk memblokir seluruh kampus." : 'Hanya fasilitas dalam lingkup unit Anda.'}
+      >
+        <Select name="facilityId" defaultValue={defaultFacilityId}>
+          {canBlockAll && <option value="ALL">Semua Fasilitas (block kampus-wide)</option>}
           {UNIT_ORDER.map((unit) => {
             const items = facilities.filter((f) => f.managingUnit === unit);
             if (items.length === 0) return null;

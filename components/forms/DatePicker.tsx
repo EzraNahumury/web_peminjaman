@@ -33,11 +33,13 @@ export function DatePicker({
   onChange,
   min,
   placeholder = 'Pilih tanggal',
+  variant = 'default',
 }: {
   value: string; // yyyy-mm-dd
   onChange: (v: string) => void;
   min?: string;
   placeholder?: string;
+  variant?: 'default' | 'ghost';
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -147,22 +149,58 @@ export function DatePicker({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`flex h-10 w-full items-center gap-2 rounded-[var(--radius-md)] border border-[var(--neutral-300)] bg-white px-3.5 text-left text-sm shadow-[var(--shadow-xs)] outline-none transition-all hover:border-[var(--neutral-400)] focus-visible:border-[var(--primary-600)] focus-visible:ring-[3px] focus-visible:ring-[var(--primary-100)] ${open ? 'border-[var(--primary-600)] ring-[3px] ring-[var(--primary-100)]' : ''}`}
+        className={
+          variant === 'ghost'
+            ? `flex h-11 w-full items-center gap-2.5 rounded-[var(--radius-md)] px-3.5 text-left text-[13px] outline-none transition-colors hover:bg-[var(--neutral-50)] focus-visible:bg-[var(--neutral-50)] ${
+                open ? 'bg-[var(--neutral-50)]' : ''
+              } ${selectedDate ? 'text-[var(--neutral-900)]' : 'text-[var(--neutral-500)]'}`
+            : `flex h-10 w-full items-center gap-2 rounded-[var(--radius-md)] border border-[var(--neutral-300)] bg-white px-3.5 text-left text-sm shadow-[var(--shadow-xs)] outline-none transition-all hover:border-[var(--neutral-400)] focus-visible:border-[var(--primary-600)] focus-visible:ring-[3px] focus-visible:ring-[var(--primary-100)] ${
+                open ? 'border-[var(--primary-600)] ring-[3px] ring-[var(--primary-100)]' : ''
+              }`
+        }
       >
-        <CalendarIcon size={14} className="shrink-0 text-[var(--neutral-400)]" />
-        <span className={`flex-1 truncate ${selectedDate ? 'text-[var(--neutral-900)]' : 'text-[var(--neutral-400)]'}`}>
-          {display}
-        </span>
-        {selectedDate && (
-          <span
-            role="button"
-            tabIndex={-1}
-            onClick={clear}
-            className="-mr-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--neutral-400)] hover:bg-[var(--neutral-100)] hover:text-[var(--neutral-700)]"
-            aria-label="Hapus tanggal"
-          >
-            <X size={11} />
-          </span>
+        {variant === 'ghost' ? (
+          <>
+            <CalendarIcon
+              size={15}
+              className={selectedDate ? 'shrink-0 text-[var(--primary-700)]' : 'shrink-0 text-[var(--neutral-500)]'}
+            />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--neutral-500)]">
+              Tanggal
+            </span>
+            <span className="flex-1 truncate font-semibold">{selectedDate ? display : '—'}</span>
+            {selectedDate ? (
+              <span
+                role="button"
+                tabIndex={-1}
+                onClick={clear}
+                className="-mr-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--neutral-400)] hover:bg-[var(--neutral-200)] hover:text-[var(--neutral-700)]"
+                aria-label="Hapus tanggal"
+              >
+                <X size={11} />
+              </span>
+            ) : (
+              <ChevronRight size={13} className="rotate-90 opacity-50" />
+            )}
+          </>
+        ) : (
+          <>
+            <CalendarIcon size={14} className="shrink-0 text-[var(--neutral-400)]" />
+            <span className={`flex-1 truncate ${selectedDate ? 'text-[var(--neutral-900)]' : 'text-[var(--neutral-400)]'}`}>
+              {display}
+            </span>
+            {selectedDate && (
+              <span
+                role="button"
+                tabIndex={-1}
+                onClick={clear}
+                className="-mr-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--neutral-400)] hover:bg-[var(--neutral-100)] hover:text-[var(--neutral-700)]"
+                aria-label="Hapus tanggal"
+              >
+                <X size={11} />
+              </span>
+            )}
+          </>
         )}
       </button>
 

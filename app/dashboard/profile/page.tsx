@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { Mail, Phone, IdCard, ShieldCheck, UserRound, KeyRound, ImageIcon } from 'lucide-react';
+import { Mail, Phone, IdCard, ShieldCheck, UserRound, KeyRound, ImageIcon, PenTool } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 import {
   LogoUploadForm,
   PasswordForm,
   ProfileEditForm,
+  SignatureUploadForm,
 } from '@/components/forms/ProfileForms';
 import type { Role } from '@/types';
 
@@ -122,6 +123,21 @@ export default async function ProfilePage() {
           description="Logo akan dicetak pada header surat permohonan peminjaman."
         >
           <LogoUploadForm user={user} />
+        </Section>
+      )}
+
+      {/* Section 04 — Tanda Tangan (semua role yang menandatangani surat) */}
+      {(user.role === 'PENGURUS' ||
+        user.role === 'BIRO_III' ||
+        user.role === 'WR3_WD3' ||
+        user.role === 'ADMIN_UNIT') && (
+        <Section
+          icon={<PenTool size={15} />}
+          eyebrow={user.role === 'PENGURUS' ? '04 · Tanda Tangan' : '03 · Tanda Tangan'}
+          title="Tanda tangan digital"
+          description="Unggah TTD (PNG transparan disarankan). Akan otomatis tertempel di atas nama Anda pada surat permohonan yang Anda tandatangani."
+        >
+          <SignatureUploadForm user={user} />
         </Section>
       )}
     </div>

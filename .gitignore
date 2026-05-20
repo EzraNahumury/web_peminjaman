@@ -49,3 +49,6 @@ next-env.d.ts
 # Baileys WhatsApp session
 /wa-session/
 
+# runtime uploads (user-generated content)
+/public/uploads/
+

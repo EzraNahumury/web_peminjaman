@@ -2,10 +2,10 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { execute, query } from '@/lib/db';
+import { execute, query, queryOne } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { toMysqlDateTime } from '@/lib/request-code';
-import type { FacilityBlock } from '@/types';
+import type { FacilityBlock, ManagingUnit } from '@/types';
 
 const BlockSchema = z
   .object({
@@ -39,6 +39,23 @@ export async function createFacilityBlock(_prev: BlockFormState, formData: FormD
     return { error: 'Fasilitas tidak valid' };
   }
 
+  // Scope enforcement for ADMIN_UNIT: cannot block kampus-wide, cannot block other units
+  if (session.role === 'ADMIN_UNIT') {
+    const bureau = (session.bureauScope ?? null) as ManagingUnit | null;
+    if (!bureau) return { error: 'Akun belum memiliki unit pengelola' };
+    if (facilityId == null) {
+      return { error: 'Admin Unit tidak dapat memblokir seluruh kampus' };
+    }
+    const f = await queryOne<{ managingUnit: ManagingUnit }>(
+      'SELECT managingUnit FROM facilities WHERE id = ?',
+      [facilityId]
+    );
+    if (!f) return { error: 'Fasilitas tidak ditemukan' };
+    if (f.managingUnit !== bureau) {
+      return { error: 'Fasilitas di luar lingkup unit Anda' };
+    }
+  }
+
   await execute(
     'INSERT INTO facility_blocks (facilityId, startDateTime, endDateTime, reason, createdBy) VALUES (?,?,?,?,?)',
     [
@@ -54,13 +71,40 @@ export async function createFacilityBlock(_prev: BlockFormState, formData: FormD
 }
 
 export async function deleteFacilityBlock(id: number) {
-  await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+
+  if (session.role === 'ADMIN_UNIT') {
+    const bureau = (session.bureauScope ?? null) as ManagingUnit | null;
+    if (!bureau) return;
+    const row = await queryOne<{ facilityId: number | null; managingUnit: ManagingUnit | null }>(
+      `SELECT b.facilityId, f.managingUnit
+       FROM facility_blocks b
+       LEFT JOIN facilities f ON f.id = b.facilityId
+       WHERE b.id = ?`,
+      [id]
+    );
+    if (!row) return;
+    // Cannot delete kampus-wide blocks or blocks for other units
+    if (row.facilityId == null || row.managingUnit !== bureau) return;
+  }
+
   await execute('DELETE FROM facility_blocks WHERE id = ?', [id]);
   revalidatePath('/dashboard/admin-unit/blocks');
 }
 
-export async function getBlocks() {
+export async function getBlocks(bureau?: ManagingUnit | null) {
   await requireRole('ADMIN_UNIT', 'SUPER_ADMIN');
+  if (bureau) {
+    return query<FacilityBlock & { facilityName: string | null; createdByName: string | null }>(
+      `SELECT b.*, f.name AS facilityName, u.name AS createdByName
+       FROM facility_blocks b
+       JOIN facilities f ON f.id = b.facilityId
+       LEFT JOIN users u ON u.id = b.createdBy
+       WHERE f.managingUnit = ?
+       ORDER BY b.startDateTime DESC`,
+      [bureau]
+    );
+  }
   return query<FacilityBlock & { facilityName: string | null; createdByName: string | null }>(
     `SELECT b.*, f.name AS facilityName, u.name AS createdByName
      FROM facility_blocks b
