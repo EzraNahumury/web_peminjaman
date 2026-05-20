@@ -4,14 +4,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Search,
-  Info,
   CheckCircle2,
   XCircle,
-  Upload,
-  Sparkles,
   Building2,
   MapPin,
   Users as UsersIcon,
+  CalendarDays,
+  ClipboardList,
+  UserRound,
 } from 'lucide-react';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
@@ -45,9 +45,7 @@ const PURPOSE_OPTIONS = [
 
 type Props = {
   mode: 'create' | 'edit';
-  /** When provided, facility is locked (read-only card). */
   lockedFacility?: Facility;
-  /** When provided AND no lockedFacility, render dropdown. */
   facilities?: Facility[];
   initial?: FacilityRequest;
 };
@@ -59,14 +57,12 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
   const [state, formAction, pending] = useActionState<RequestFormState, FormData>(action, undefined);
   const errs = state?.fieldErrors ?? {};
 
-  // Facility may be locked (from card click) or selectable via dropdown.
   const [pickedFacilityId, setPickedFacilityId] = useState<string>(
     lockedFacility ? String(lockedFacility.id) : initial ? String(initial.facilityId) : ''
   );
   const facilityId = lockedFacility ? String(lockedFacility.id) : pickedFacilityId;
   const [activityName, setActivityName] = useState<string>(initial?.activityName ?? '');
   const [organizationName, setOrganizationName] = useState<string>(initial?.organizationName ?? '');
-  // Date and time split: yyyy-mm-dd + hh:mm
   const [startDate, setStartDate] = useState<string>(initial ? toDateOnly(initial.startDateTime) : '');
   const [startTime, setStartTime] = useState<string>(initial ? toTimeOnly(initial.startDateTime) : '');
   const [endDate, setEndDate] = useState<string>(initial ? toDateOnly(initial.endDateTime) : '');
@@ -116,263 +112,236 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
   }
 
   return (
-    <form action={formAction} className="grid gap-6 lg:grid-cols-3">
-      {/* Form column */}
-      <div className="space-y-5 lg:col-span-2">
-        <Card>
-          <CardHeader
-            eyebrow="Form Permohonan"
-            title={mode === 'create' ? 'Ajukan peminjaman fasilitas' : 'Edit dan submit ulang pengajuan'}
-            description="Sistem akan otomatis mengecek tabrakan jadwal sebelum permohonan dapat dikirim."
-          />
-          <div className="space-y-4 px-6 pb-6">
-            {lockedFacility ? (
-              <Field label="Fasilitas">
-                <input type="hidden" name="facilityId" value={facilityId} />
-                <div className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--primary-100)] bg-[var(--primary-50)] px-4 py-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-white text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
-                    <Building2 size={17} strokeWidth={2.1} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-semibold text-[var(--neutral-900)]">{lockedFacility.name}</p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-[var(--neutral-600)]">
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin size={11} className="text-[var(--neutral-400)]" />
-                        {lockedFacility.location ?? '—'}
-                      </span>
-                      {lockedFacility.capacity != null && (
-                        <span className="inline-flex items-center gap-1">
-                          <UsersIcon size={11} className="text-[var(--neutral-400)]" />
-                          Kap. {lockedFacility.capacity}
-                        </span>
-                      )}
-                      <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--neutral-700)] ring-1 ring-[var(--neutral-200)]">
-                        {MANAGING_UNIT_LABEL[lockedFacility.managingUnit]}
-                      </span>
-                    </div>
-                  </div>
-                  {mode === 'create' && (
-                    <Link
-                      href="/dashboard/pengurus/requests/new"
-                      className="shrink-0 self-center text-[11.5px] font-semibold text-[var(--primary-700)] hover:text-[var(--primary-800)]"
-                    >
-                      Ganti
-                    </Link>
-                  )}
-                </div>
-              </Field>
-            ) : (
-              <Field label="Fasilitas" error={errs.facilityId} required hint="Dikelompokkan per unit pengelola. Klik untuk membuka pemilih.">
-                <input type="hidden" name="facilityId" value={pickedFacilityId} />
-                <FacilityPicker
-                  facilities={facilities ?? []}
-                  value={pickedFacilityId}
-                  onChange={setPickedFacilityId}
-                />
-              </Field>
-            )}
+    <form action={formAction} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="space-y-5">
+        {/* Hidden inputs */}
+        <input type="hidden" name="startDateTime" value={start} />
+        <input type="hidden" name="endDateTime" value={end} />
 
-            {/* Hidden composed datetime-local strings for server action */}
-            <input type="hidden" name="startDateTime" value={start} />
-            <input type="hidden" name="endDateTime" value={end} />
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Tanggal mulai" error={errs.startDateTime} required>
-                <DatePicker value={startDate} onChange={setStartDate} placeholder="Pilih tanggal mulai" />
-              </Field>
-              <Field label="Tanggal selesai" error={errs.endDateTime} required>
-                <DatePicker
-                  value={endDate}
-                  onChange={setEndDate}
-                  min={startDate}
-                  placeholder="Pilih tanggal selesai"
-                />
-              </Field>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Jam mulai" required>
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  required
-                />
-              </Field>
-              <Field label="Jam selesai" required>
-                <Input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  required
-                />
-              </Field>
-            </div>
-
-            <Field label="Nama kegiatan" error={errs.activityName} required>
-              <Input
-                name="activityName"
-                value={activityName}
-                onChange={(e) => setActivityName(e.target.value)}
-                placeholder="contoh: Seminar Nasional AI & Pendidikan"
-                required
-              />
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Jumlah peserta"
-                error={errs.participantCount}
-                hint={
-                  selectedFacility?.capacity != null
-                    ? `Maks. ${selectedFacility.capacity} (kapasitas ${selectedFacility.name})`
-                    : undefined
-                }
-              >
-                <Input
-                  type="number"
-                  name="participantCount"
-                  value={participants}
-                  onChange={(e) => setParticipants(e.target.value)}
-                  min={0}
-                  max={selectedFacility?.capacity ?? undefined}
-                  placeholder="0"
-                />
-                {selectedFacility?.capacity != null &&
-                  participants !== '' &&
-                  Number(participants) > selectedFacility.capacity && (
-                    <p className="mt-1.5 text-xs font-medium text-rose-600">
-                      Melebihi kapasitas {selectedFacility.name} ({selectedFacility.capacity}).
-                    </p>
-                  )}
-              </Field>
-              <Field label="Penanggung jawab" error={errs.personInCharge} required>
-                <Input
-                  name="personInCharge"
-                  value={personInCharge}
-                  onChange={(e) => setPersonInCharge(e.target.value)}
-                  placeholder="Nama PIC kegiatan"
-                  required
-                />
-              </Field>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nama organisasi / LK / OK" error={errs.organizationName} required>
-                <Input
-                  name="organizationName"
-                  value={organizationName}
-                  onChange={(e) => setOrganizationName(e.target.value)}
-                  required
-                />
-              </Field>
-              <Field
-                label="Lingkup kegiatan"
-                error={errs.activityScope}
-                hint="UNIVERSITAS → WR3 · FAKULTAS → WD3"
-                required
-              >
-                <Select
-                  name="activityScope"
-                  value={scope}
-                  onChange={(e) => setScope(e.target.value as 'UNIVERSITAS' | 'FAKULTAS')}
-                  required
-                >
-                  <option value="UNIVERSITAS">Tingkat Universitas</option>
-                  <option value="FAKULTAS">Tingkat Fakultas</option>
-                </Select>
-              </Field>
-              <Field
-                label="Jenis kegiatan"
-                error={errs.activityLevel}
-                hint="Prioritas antrian: Akademik > Institusional > Kemahasiswaan."
-                required
-              >
-                <Select name="activityLevel" defaultValue={initial?.activityLevel ?? 'KEMAHASISWAAN'} required>
-                  <option value="KEMAHASISWAAN">Kemahasiswaan</option>
-                  <option value="INSTITUSIONAL">Institusional</option>
-                  <option value="AKADEMIK">Akademik</option>
-                </Select>
-              </Field>
-            </div>
-
-            <Field
-              label="Dokumen pendukung (proposal / surat tugas)"
-              error={errs.attachmentUrl}
-              hint="Opsional. Tempel URL Google Drive proposal/surat tugas."
-            >
-              <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--neutral-300)] bg-[var(--neutral-50)] px-4 py-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-white text-[var(--neutral-500)] ring-1 ring-[var(--neutral-200)]">
-                  <Upload size={15} />
+        {/* SECTION — Fasilitas */}
+        <Section
+          icon={<Building2 size={15} />}
+          eyebrow="01 · Fasilitas"
+          title={mode === 'create' ? 'Pilih ruangan atau peralatan' : 'Ubah pengajuan'}
+          description="Sistem akan otomatis memeriksa tabrakan jadwal sebelum permohonan dikirim."
+        >
+          {lockedFacility ? (
+            <div className="rounded-[var(--radius-md)] border border-[var(--primary-100)] bg-[var(--primary-50)] p-4">
+              <input type="hidden" name="facilityId" value={facilityId} />
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-white text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
+                  <Building2 size={17} strokeWidth={2.1} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12.5px] font-semibold text-[var(--neutral-800)]">Klik untuk menggunggah dokumen</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--neutral-500)]">PDF, DOC, atau gambar · maks. 5MB</p>
-                  <Input
-                    name="attachmentUrl"
-                    defaultValue={initial?.attachmentUrl ?? ''}
-                    placeholder="https://drive.google.com/..."
-                    className="!mt-2 !h-8 !text-[12px]"
-                  />
+                  <p className="truncate text-[14px] font-semibold text-[var(--neutral-900)]">{lockedFacility.name}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[var(--neutral-600)]">
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin size={11} className="text-[var(--neutral-400)]" />
+                      {lockedFacility.location ?? '—'}
+                    </span>
+                    {lockedFacility.capacity != null && (
+                      <span className="inline-flex items-center gap-1">
+                        <UsersIcon size={11} className="text-[var(--neutral-400)]" />
+                        Kap. {lockedFacility.capacity}
+                      </span>
+                    )}
+                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10.5px] font-medium text-[var(--neutral-700)] ring-1 ring-[var(--neutral-200)]">
+                      {MANAGING_UNIT_LABEL[lockedFacility.managingUnit]}
+                    </span>
+                  </div>
                 </div>
+                {mode === 'create' && (
+                  <Link
+                    href="/dashboard/pengurus/requests/new"
+                    className="shrink-0 self-center text-[11.5px] font-semibold text-[var(--primary-700)] hover:text-[var(--primary-800)]"
+                  >
+                    Ganti
+                  </Link>
+                )}
               </div>
+            </div>
+          ) : (
+            <Field label="Fasilitas" error={errs.facilityId} required>
+              <input type="hidden" name="facilityId" value={pickedFacilityId} />
+              <FacilityPicker
+                facilities={facilities ?? []}
+                value={pickedFacilityId}
+                onChange={setPickedFacilityId}
+              />
             </Field>
+          )}
 
-            <Tip>
-              Klik <strong>Cek Ketersediaan</strong> untuk memvalidasi jadwal Anda di database sebelum dikirim.
-            </Tip>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Lingkup kegiatan"
+              error={errs.activityScope}
+              hint="Universitas divalidasi WR3 · Fakultas divalidasi WD3"
+              required
+            >
+              <Select
+                name="activityScope"
+                value={scope}
+                onChange={(e) => setScope(e.target.value as 'UNIVERSITAS' | 'FAKULTAS')}
+                required
+              >
+                <option value="UNIVERSITAS">Tingkat Universitas</option>
+                <option value="FAKULTAS">Tingkat Fakultas</option>
+              </Select>
+            </Field>
+            <Field
+              label="Jenis kegiatan"
+              error={errs.activityLevel}
+              hint="Akademik > Institusional > Kemahasiswaan"
+              required
+            >
+              <Select name="activityLevel" defaultValue={initial?.activityLevel ?? 'KEMAHASISWAAN'} required>
+                <option value="KEMAHASISWAAN">Kemahasiswaan</option>
+                <option value="INSTITUSIONAL">Institusional</option>
+                <option value="AKADEMIK">Akademik</option>
+              </Select>
+            </Field>
           </div>
-        </Card>
+        </Section>
 
-        <Card>
-          <CardHeader eyebrow="Kontak PIC" title="Email & telepon penanggung jawab" />
-          <div className="grid gap-4 px-6 pb-6 sm:grid-cols-2">
-            <Field label="NIM / NIDN / ID PIC" error={errs.identityNumber}>
-              <Input name="identityNumber" defaultValue={initial?.identityNumber ?? ''} />
+        {/* SECTION — Jadwal */}
+        <Section icon={<CalendarDays size={15} />} eyebrow="02 · Jadwal" title="Tanggal dan waktu penggunaan">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Tanggal mulai" error={errs.startDateTime} required>
+              <DatePicker value={startDate} onChange={setStartDate} placeholder="Pilih tanggal mulai" />
             </Field>
-            <Field label="No HP" error={errs.phone} required>
-              <Input name="phone" defaultValue={initial?.phone ?? ''} required />
+            <Field label="Tanggal selesai" error={errs.endDateTime} required>
+              <DatePicker
+                value={endDate}
+                onChange={setEndDate}
+                min={startDate}
+                placeholder="Pilih tanggal selesai"
+              />
             </Field>
-            <Field label="Email" error={errs.email} required>
-              <Input type="email" name="email" defaultValue={initial?.email ?? ''} required />
+            <Field label="Jam mulai" required>
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+            </Field>
+            <Field label="Jam selesai" required>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
             </Field>
           </div>
-        </Card>
 
-        <Card>
-          <CardHeader eyebrow="Detail Kegiatan" title="Tujuan dan deskripsi" />
-          <div className="space-y-4 px-6 pb-6">
+          {duration && (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--neutral-100)] px-3 py-1 text-[11.5px] font-medium text-[var(--neutral-700)]">
+              Durasi peminjaman <span className="font-semibold text-[var(--neutral-900)]">{duration}</span>
+            </div>
+          )}
+        </Section>
+
+        {/* SECTION — Detail */}
+        <Section icon={<ClipboardList size={15} />} eyebrow="03 · Detail Kegiatan" title="Informasi acara">
+          <Field label="Nama kegiatan" error={errs.activityName} required>
+            <Input
+              name="activityName"
+              value={activityName}
+              onChange={(e) => setActivityName(e.target.value)}
+              placeholder="contoh: Seminar Nasional AI & Pendidikan"
+              required
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Tujuan peminjaman" error={errs.purpose} required>
               <Select
                 name="purpose"
-                value={PURPOSE_OPTIONS.includes(purpose) ? purpose : (purpose ? '__custom' : '')}
-                onChange={(e) => {
-                  if (e.target.value === '__custom') return;
-                  setPurpose(e.target.value);
-                }}
+                value={PURPOSE_OPTIONS.includes(purpose) ? purpose : ''}
+                onChange={(e) => setPurpose(e.target.value)}
                 required
               >
-                <option value="">— Pilih tujuan —</option>
+                <option value="">Pilih tujuan</option>
                 {PURPOSE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
                 ))}
               </Select>
             </Field>
-            <Field label="Deskripsi kegiatan" error={errs.description} required>
-              <Textarea name="description" defaultValue={initial?.description ?? ''} rows={3} required />
-            </Field>
             <Field
-              label="Kebutuhan tambahan"
-              error={errs.additionalNeeds}
-              hint="Sound system, kursi tambahan, konsumsi, dll."
+              label="Jumlah peserta"
+              error={errs.participantCount}
+              hint={
+                selectedFacility?.capacity != null
+                  ? `Maks. ${selectedFacility.capacity} orang`
+                  : undefined
+              }
             >
-              <Textarea name="additionalNeeds" defaultValue={initial?.additionalNeeds ?? ''} rows={2} />
-            </Field>
-            <Field label="Catatan tambahan" error={errs.notes}>
-              <Textarea name="notes" defaultValue={initial?.notes ?? ''} rows={2} />
+              <Input
+                type="number"
+                name="participantCount"
+                value={participants}
+                onChange={(e) => setParticipants(e.target.value)}
+                min={0}
+                max={selectedFacility?.capacity ?? undefined}
+                placeholder="0"
+              />
+              {selectedFacility?.capacity != null &&
+                participants !== '' &&
+                Number(participants) > selectedFacility.capacity && (
+                  <p className="mt-1.5 text-xs font-medium text-rose-600">
+                    Melebihi kapasitas {selectedFacility.name} ({selectedFacility.capacity}).
+                  </p>
+                )}
             </Field>
           </div>
-        </Card>
+
+          <Field
+            label="Kebutuhan tambahan"
+            error={errs.additionalNeeds}
+            hint="Sound system, kursi tambahan, konsumsi, dll. (opsional)"
+          >
+            <Textarea
+              name="additionalNeeds"
+              defaultValue={initial?.additionalNeeds ?? ''}
+              rows={2}
+              placeholder="Tuliskan kebutuhan tambahan untuk acara…"
+            />
+          </Field>
+        </Section>
+
+        {/* SECTION — PIC */}
+        <Section icon={<UserRound size={15} />} eyebrow="04 · Penanggung Jawab" title="Kontak PIC kegiatan">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Nama PIC" error={errs.personInCharge} required>
+              <Input
+                name="personInCharge"
+                value={personInCharge}
+                onChange={(e) => setPersonInCharge(e.target.value)}
+                placeholder="Nama lengkap"
+                required
+              />
+            </Field>
+            <Field label="Nama organisasi / LK / OK" error={errs.organizationName} required>
+              <Input
+                name="organizationName"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                placeholder="BEM / HMPS / UKM / ..."
+                required
+              />
+            </Field>
+            <Field label="NIM / NIDN / ID" error={errs.identityNumber}>
+              <Input name="identityNumber" defaultValue={initial?.identityNumber ?? ''} placeholder="2021xxxxxxx" />
+            </Field>
+            <Field label="No HP" error={errs.phone} required>
+              <Input name="phone" defaultValue={initial?.phone ?? ''} required placeholder="08xxxxxxxxxx" />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Email" error={errs.email} required>
+                <Input
+                  type="email"
+                  name="email"
+                  defaultValue={initial?.email ?? ''}
+                  placeholder="nama@students.ukdw.ac.id"
+                  required
+                />
+              </Field>
+            </div>
+          </div>
+        </Section>
 
         {state?.error && (
           <div className="rounded-[var(--radius-md)] border border-rose-200 bg-rose-50 p-4">
@@ -391,13 +360,17 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
           </div>
         )}
 
-        {/* Footer actions */}
-        <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white/95 px-4 py-3 shadow-[var(--shadow-sm)] backdrop-blur">
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white/90 px-4 py-3 shadow-[var(--shadow-sm)] backdrop-blur">
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Batal
           </Button>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" onClick={doCheck} disabled={checking || !facilityId || !start || !end}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={doCheck}
+              disabled={checking || !facilityId || !start || !end}
+            >
               <Search size={14} />
               {checking ? 'Mengecek…' : 'Cek Ketersediaan'}
             </Button>
@@ -408,12 +381,14 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
         </div>
       </div>
 
-      {/* Summary panel */}
-      <aside className="lg:col-span-1">
+      {/* Sidebar summary */}
+      <aside className="hidden lg:block">
         <div className="sticky top-[80px] space-y-4">
-          <div className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-xs)]">
-            <div className="border-b border-[var(--neutral-100)] px-5 py-4">
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--neutral-500)]">Ringkasan</p>
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-xs)]">
+            <div className="border-b border-[var(--neutral-100)] bg-[var(--neutral-50)]/60 px-5 py-3.5">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--neutral-500)]">
+                Ringkasan
+              </p>
               <p className="mt-0.5 text-[13px] font-semibold text-[var(--neutral-900)]">Pratinjau permohonan</p>
             </div>
             <dl className="divide-y divide-[var(--neutral-100)] text-[12.5px]">
@@ -428,24 +403,14 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
               <SummaryRow label="Tujuan" value={purpose || '—'} />
               <SummaryRow label="Peserta" value={participants ? `${participants} orang` : '—'} />
               <SummaryRow label="Lingkup" value={ACTIVITY_SCOPE_LABEL[scope]} />
-              <SummaryRow
-                label="Status"
-                value={
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-amber-100">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    Akan masuk antrean
-                  </span>
-                }
-              />
             </dl>
           </div>
 
-          {/* Availability result */}
           {avail && (
             <div
               className={
                 avail.available
-                  ? 'rounded-[var(--radius-lg)] border border-[var(--primary-200,var(--primary-100))] bg-[var(--primary-50)] p-4 text-[var(--primary-900)]'
+                  ? 'rounded-[var(--radius-lg)] border border-[var(--primary-100)] bg-[var(--primary-50)] p-4 text-[var(--primary-900)]'
                   : 'rounded-[var(--radius-lg)] border border-rose-200 bg-rose-50 p-4 text-rose-900'
               }
             >
@@ -458,8 +423,8 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
                     {avail.available
                       ? 'Fasilitas tersedia'
                       : avail.blocked
-                        ? 'Diblokir admin pada jadwal tersebut'
-                        : 'Tidak tersedia pada jadwal tersebut'}
+                        ? 'Diblokir admin'
+                        : 'Bentrok jadwal'}
                   </p>
                   {avail.blocked && avail.blockReason && (
                     <p className="mt-1 text-[12px]">{avail.blockReason}</p>
@@ -487,63 +452,39 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
               </div>
             </div>
           )}
-
-          {/* Validation auto tip */}
-          <div className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white p-4">
-            <div className="flex items-start gap-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary-50)] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
-                <Sparkles size={13} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12.5px] font-semibold text-[var(--neutral-900)]">Validasi otomatis</p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-[var(--neutral-600)]">
-                  Sistem mengecek overlap schedule sesuai alur. Jika bentrok, Anda akan diminta memilih jadwal lain.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </aside>
     </form>
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-xs)]">
-      {children}
-    </section>
-  );
-}
-
-function CardHeader({
+function Section({
+  icon,
   eyebrow,
   title,
   description,
+  children,
 }: {
-  eyebrow?: string;
+  icon: React.ReactNode;
+  eyebrow: string;
   title: string;
   description?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <header className="border-b border-[var(--neutral-100)] px-6 py-5">
-      {eyebrow && (
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--neutral-500)]">
-          {eyebrow}
-        </p>
-      )}
-      <h2 className="mt-1 text-[18px] font-bold tracking-tight text-[var(--neutral-900)]">{title}</h2>
-      {description && <p className="mt-1 text-[12.5px] text-[var(--neutral-500)]">{description}</p>}
-    </header>
-  );
-}
-
-function Tip({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2 rounded-[var(--radius-md)] bg-[var(--neutral-50)] px-3.5 py-2.5 text-[12px] text-[var(--neutral-600)] ring-1 ring-[var(--neutral-100)]">
-      <Info size={13} className="mt-0.5 shrink-0 text-[var(--neutral-400)]" />
-      <p className="leading-relaxed">{children}</p>
-    </div>
+    <section className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-xs)]">
+      <header className="flex items-start gap-3 border-b border-[var(--neutral-100)] px-5 py-4">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary-50)] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--neutral-500)]">{eyebrow}</p>
+          <h3 className="mt-0.5 text-[15px] font-semibold tracking-tight text-[var(--neutral-900)]">{title}</h3>
+          {description && <p className="mt-1 text-[12px] text-[var(--neutral-500)]">{description}</p>}
+        </div>
+      </header>
+      <div className="space-y-4 px-5 py-5">{children}</div>
+    </section>
   );
 }
 

@@ -47,7 +47,7 @@ export const FacilityRequestSchema = z
     endDateTime: dtIso,
     participantCount: z.coerce.number().int().min(0).optional(),
     purpose: z.string().trim().min(3, 'Tujuan wajib diisi'),
-    description: z.string().trim().min(3, 'Deskripsi wajib diisi'),
+    description: z.string().trim().nullish().transform((v) => v ?? ''),
     activityScope: z.enum(['UNIVERSITAS', 'FAKULTAS']).default('UNIVERSITAS'),
     activityLevel: z.enum(['AKADEMIK', 'INSTITUSIONAL', 'KEMAHASISWAAN']).default('KEMAHASISWAAN'),
     additionalNeeds: z.string().trim().optional().or(z.literal('')),
