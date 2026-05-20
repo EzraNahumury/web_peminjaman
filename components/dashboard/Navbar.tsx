@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bell, ChevronRight, User } from 'lucide-react';
 import type { Role } from '@/types';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 
 const SEGMENT_LABEL: Record<string, string> = {
   dashboard: 'FASKO',
@@ -36,7 +35,6 @@ function buildBreadcrumb(path: string): { label: string; href: string | null }[]
     const isLast = i === parts.length - 1;
     crumbs.push({ label, href: isLast ? null : acc });
   }
-  // Drop the auto-generated role segment when it duplicates "Beranda"
   return crumbs;
 }
 
@@ -62,33 +60,25 @@ export function Navbar({ unread }: { role: Role; unread: number }) {
       </nav>
 
       <div className="flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/dashboard/notifications"
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)]"
-              aria-label="Notifikasi"
-            >
-              <Bell className="h-4 w-4" />
-              {unread > 0 && (
-                <span className="absolute -right-1 -top-1 inline-flex h-2.5 w-2.5 rounded-full bg-[var(--status-rejected-fg)] ring-2 ring-white" />
-              )}
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent>Notifikasi</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/dashboard/profile"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)]"
-              aria-label="Profil"
-            >
-              <User className="h-4 w-4" />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent>Profil</TooltipContent>
-        </Tooltip>
+        <Link
+          href="/dashboard/notifications"
+          className="relative inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)]"
+          aria-label="Notifikasi"
+          title="Notifikasi"
+        >
+          <Bell className="h-4 w-4" />
+          {unread > 0 && (
+            <span className="absolute -right-1 -top-1 inline-flex h-2.5 w-2.5 rounded-full bg-[var(--status-rejected-fg)] ring-2 ring-white" />
+          )}
+        </Link>
+        <Link
+          href="/dashboard/profile"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)]"
+          aria-label="Profil"
+          title="Profil"
+        >
+          <User className="h-4 w-4" />
+        </Link>
       </div>
     </header>
   );
