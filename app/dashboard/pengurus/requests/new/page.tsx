@@ -41,6 +41,7 @@ export default async function NewRequestPage({
       </div>
       <RequestForm
         mode="create"
+        assetsReady={Boolean(user?.organizationLogoUrl) && Boolean(user?.signatureUrl)}
         lockedFacility={lockedFacility ?? undefined}
         facilities={lockedFacility ? undefined : allFacilities}
         initial={

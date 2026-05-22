@@ -3,7 +3,9 @@ import { requireRole, getCurrentUser } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { PageHeader, StatCard } from '@/components/ui/Card';
 import { BookingsTrendChart, CategoryBreakdownChart } from '@/components/dashboard/BookingsTrendChart';
-import { MANAGING_UNIT_LABEL, type ManagingUnit } from '@/types';
+import { ValidationQueuePanel } from '@/components/dashboard/ValidationQueuePanel';
+import { MANAGING_UNIT_LABEL, type FacilityRequest, type ManagingUnit, type RequestStatus } from '@/types';
+import { REQUEST_LIST_ORDER_SQL } from '@/utils/priority';
 
 const TREND_DAYS = 30;
 
@@ -109,6 +111,24 @@ export default async function AdminUnitDashboard() {
   );
   const catData = catRows.map((r) => ({ label: r.label, value: Number(r.value) }));
 
+  const queueSql = bureau
+    ? `SELECT fr.*, f.name AS facilityName, u.name AS userName
+       FROM facility_requests fr
+       JOIN facilities f ON f.id = fr.facilityId
+       JOIN users u ON u.id = fr.userId
+       WHERE fr.status = 'WAITING_ADMIN_UNIT' AND f.managingUnit = ?
+       ORDER BY ${REQUEST_LIST_ORDER_SQL} LIMIT 5`
+    : `SELECT fr.*, f.name AS facilityName, u.name AS userName
+       FROM facility_requests fr
+       JOIN facilities f ON f.id = fr.facilityId
+       JOIN users u ON u.id = fr.userId
+       WHERE fr.status = 'WAITING_ADMIN_UNIT'
+       ORDER BY ${REQUEST_LIST_ORDER_SQL} LIMIT 5`;
+  const queue = await query<FacilityRequest & { facilityName: string; userName: string }>(
+    queueSql,
+    bureau ? [bureau] : []
+  );
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -132,6 +152,22 @@ export default async function AdminUnitDashboard() {
           hint={`${blocks} jadwal terblokir`}
         />
       </div>
+
+      <ValidationQueuePanel
+        title="Antrian Review Akhir"
+        subtitle={`5 pengajuan terbaru menunggu ${bureauLabel} — prioritas review di sini.`}
+        listHref="/dashboard/admin-unit/requests"
+        detailHrefPrefix="/dashboard/admin-unit/requests"
+        items={queue.map((r) => ({
+          id: r.id,
+          activityName: r.activityName,
+          organizationName: r.organizationName,
+          userName: r.userName,
+          facilityName: r.facilityName,
+          startDateTime: r.startDateTime,
+          status: r.status as RequestStatus,
+        }))}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">

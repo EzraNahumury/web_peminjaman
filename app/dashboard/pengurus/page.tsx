@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatWIBDate, formatWIBTime } from '@/utils/date';
 import type { FacilityRequest, RequestStatus } from '@/types';
+import { REQUEST_LIST_ORDER_SQL } from '@/utils/priority';
 
 const ID_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -52,7 +53,7 @@ export default async function PengurusDashboard() {
       `SELECT fr.*, f.name AS facilityName
        FROM facility_requests fr JOIN facilities f ON f.id = fr.facilityId
        WHERE fr.userId = ?
-       ORDER BY fr.updatedAt DESC LIMIT 5`,
+       ORDER BY ${REQUEST_LIST_ORDER_SQL} LIMIT 5`,
       [session.userId]
     ),
     query<{ id: number; name: string; category: string; location: string | null; capacity: number | null; usageCount: number }>(
@@ -236,7 +237,7 @@ export default async function PengurusDashboard() {
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-medium text-[var(--neutral-900)]">{r.activityName}</p>
                         <p className="mt-0.5 truncate text-[11.5px] text-[var(--neutral-500)]">
-                          {r.facilityName} · {formatWIBDate(r.updatedAt)}
+                          {r.facilityName} · {formatWIBDate(r.submittedAt ?? r.createdAt)}
                         </p>
                       </div>
                     </div>

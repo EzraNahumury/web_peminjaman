@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation';
 import { Check, X, Pencil, Shuffle, PauseCircle, PlayCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
-import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { Field, Textarea } from '@/components/ui/Field';
+import { OptionPicker } from '@/components/forms/OptionPicker';
+import { DateTimePicker } from '@/components/forms/DateTimePicker';
 import {
   Dialog,
   DialogContent,
@@ -74,7 +76,7 @@ const COPY: Record<
   },
 };
 
-type FacilityOption = { id: number; name: string };
+type FacilityOption = { id: number; name: string; capacity?: number | null };
 
 export function AdminUnitActions({
   requestId,
@@ -117,6 +119,10 @@ export function AdminUnitActions({
       else {
         if (!altFacilityId && !altStart && !altEnd && !trimmedNote) {
           setErr('Isi minimal salah satu: fasilitas alternatif, jadwal, atau catatan.');
+          return;
+        }
+        if ((altStart && altStart.length < 16) || (altEnd && altEnd.length < 16)) {
+          setErr('Jadwal alternatif harus memiliki tanggal dan jam lengkap.');
           return;
         }
         res = await offerAlternativeByAdminUnit(requestId, {
@@ -177,37 +183,48 @@ export function AdminUnitActions({
 
       <Dialog open={open !== null} onOpenChange={(v) => !v && setOpen(null)}>
         {copy && (
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-h-[90vh] max-w-md" dismissable={false}>
             <DialogHeader>
               <DialogTitle>{copy.title}</DialogTitle>
               <DialogDescription>{copy.description}</DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto space-y-3 p-6">
               {open === 'offer' && (
                 <>
                   <Field label="Fasilitas alternatif" hint="Opsional — kosongkan jika tetap fasilitas asal.">
-                    <Select value={altFacilityId} onChange={(e) => setAltFacilityId(e.target.value)}>
-                      <option value="">— tidak ada —</option>
-                      {facilityOptions.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </Select>
+                    <OptionPicker
+                      value={altFacilityId}
+                      onChange={setAltFacilityId}
+                      placeholder="— tidak ada —"
+                      inline
+                      searchable={facilityOptions.length > 8}
+                      options={[
+                        { value: '', label: '— tidak ada —' },
+                        ...facilityOptions.map((f) => ({
+                          value: String(f.id),
+                          label: `${f.name}${f.capacity ? ` (kap. ${f.capacity})` : ''}`,
+                        })),
+                      ]}
+                    />
                   </Field>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Mulai alternatif">
-                      <Input
-                        type="datetime-local"
+                      <DateTimePicker
                         value={altStart}
-                        onChange={(e) => setAltStart(e.target.value)}
+                        onChange={setAltStart}
+                        inline
+                        datePlaceholder="Tanggal mulai"
+                        timePlaceholder="Jam mulai"
                       />
                     </Field>
                     <Field label="Selesai alternatif">
-                      <Input
-                        type="datetime-local"
+                      <DateTimePicker
                         value={altEnd}
-                        onChange={(e) => setAltEnd(e.target.value)}
+                        onChange={setAltEnd}
+                        min={altStart || undefined}
+                        inline
+                        datePlaceholder="Tanggal selesai"
+                        timePlaceholder="Jam selesai"
                       />
                     </Field>
                   </div>

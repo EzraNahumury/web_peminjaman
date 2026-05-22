@@ -1,96 +1,92 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { FloatingPanel } from '@/components/ui/FloatingPanel';
 import {
-  Building2,
-  DoorOpen,
-  FlaskConical,
-  Camera,
-  Car,
   ChevronDown,
   Search,
   MapPin,
   Users as UsersIcon,
   Check,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { MANAGING_UNIT_DESC, MANAGING_UNIT_LABEL, type Facility, type ManagingUnit } from '@/types';
+import { getFacilityIcon, getFilterIcon } from '@/lib/facility-icons';
+import { buildFilterOptions, resolveFacilityFilterKey } from '@/lib/facility-filters';
+import type { Facility } from '@/types';
 
-const UNIT_ORDER: ManagingUnit[] = ['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'];
-
-const UNIT_ICON: Record<ManagingUnit, LucideIcon> = {
-  BIRO_I: DoorOpen,
-  BIRO_IV: Building2,
-  PPLK: FlaskConical,
-  KRT: Car,
-  LPAIP: Camera,
+const GROUP_ACCENT = {
+  fg: 'text-[var(--primary-800)]',
+  bg: 'bg-[var(--primary-50)]',
+  bar: 'bg-[var(--primary-500)]',
 };
 
-const UNIT_ACCENT: Record<ManagingUnit, { fg: string; bg: string; bar: string }> = {
-  BIRO_I:  { fg: 'text-sky-700',     bg: 'bg-sky-50',     bar: 'bg-sky-400' },
-  BIRO_IV: { fg: 'text-violet-700',  bg: 'bg-violet-50',  bar: 'bg-violet-400' },
-  PPLK:    { fg: 'text-emerald-700', bg: 'bg-emerald-50', bar: 'bg-emerald-400' },
-  KRT:     { fg: 'text-amber-700',   bg: 'bg-amber-50',   bar: 'bg-amber-400' },
-  LPAIP:   { fg: 'text-rose-700',    bg: 'bg-rose-50',    bar: 'bg-rose-400' },
-};
+function facilityMatchesQuery(f: Facility, needle: string): boolean {
+  if (!needle) return true;
+  const key = resolveFacilityFilterKey(f);
+  return (
+    f.name.toLowerCase().includes(needle) ||
+    (f.location ?? '').toLowerCase().includes(needle) ||
+    f.category.toLowerCase().includes(needle) ||
+    key.toLowerCase().includes(needle)
+  );
+}
 
 export function FacilityPicker({
   facilities,
   value,
   onChange,
+  allowAll = false,
+  allLabel = 'Semua Fasilitas (block kampus-wide)',
+  allValue = 'ALL',
+  inline = false,
 }: {
   facilities: Facility[];
   value: string;
   onChange: (id: string) => void;
+  /** Opsi blokir seluruh kampus (form admin) */
+  allowAll?: boolean;
+  allLabel?: string;
+  allValue?: string;
+  /** Render dropdown di dalam DOM (bukan portal) & buka ke atas — untuk pemakaian di dalam Dialog/modal. */
+  inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const isAllSelected = allowAll && value === allValue;
 
   const selected = useMemo(
-    () => facilities.find((f) => String(f.id) === value),
-    [facilities, value]
+    () => (isAllSelected ? null : facilities.find((f) => String(f.id) === value)),
+    [facilities, value, isAllSelected]
   );
 
-  const filtered = useMemo(() => {
-    const grouped: Record<ManagingUnit, Facility[]> = {
-      BIRO_I: [], BIRO_IV: [], PPLK: [], KRT: [], LPAIP: [],
-    };
-    const needle = q.trim().toLowerCase();
-    for (const f of facilities) {
-      if (needle) {
-        if (
-          !f.name.toLowerCase().includes(needle) &&
-          !(f.location ?? '').toLowerCase().includes(needle) &&
-          !f.category.toLowerCase().includes(needle)
-        )
-          continue;
-      }
-      grouped[f.managingUnit].push(f);
-    }
-    return grouped;
-  }, [facilities, q]);
+  const categoryOrder = useMemo(() => buildFilterOptions(facilities), [facilities]);
 
-  function pick(f: Facility) {
-    onChange(String(f.id));
+  const { grouped, visibleKeys } = useMemo(() => {
+    const map = new Map<string, Facility[]>();
+    const needle = q.trim().toLowerCase();
+
+    for (const f of facilities) {
+      if (!facilityMatchesQuery(f, needle)) continue;
+      const key = resolveFacilityFilterKey(f);
+      const list = map.get(key) ?? [];
+      list.push(f);
+      map.set(key, list);
+    }
+
+    for (const items of map.values()) {
+      items.sort((a, b) => a.name.localeCompare(b.name, 'id'));
+    }
+
+    const ordered = categoryOrder.filter((k) => (map.get(k)?.length ?? 0) > 0);
+    const extra = [...map.keys()]
+      .filter((k) => !categoryOrder.includes(k))
+      .sort((a, b) => a.localeCompare(b, 'id'));
+
+    return { grouped: map, visibleKeys: [...ordered, ...extra] };
+  }, [facilities, q, categoryOrder]);
+
+  function pickId(id: string) {
+    onChange(id);
     setOpen(false);
     setQ('');
   }
@@ -103,8 +99,18 @@ export function FacilityPicker({
         aria-expanded={open}
         className="flex h-10 w-full items-center gap-2 rounded-[var(--radius-md)] border border-[var(--neutral-300)] bg-white px-3.5 text-left text-sm shadow-[var(--shadow-xs)] outline-none transition-all hover:border-[var(--neutral-400)] focus-visible:border-[var(--primary-600)] focus-visible:ring-[3px] focus-visible:ring-[var(--primary-100)]"
       >
-        {selected ? (
+        {isAllSelected ? (
+          <span className="min-w-0 flex-1 truncate font-medium text-[var(--neutral-900)]">{allLabel}</span>
+        ) : selected ? (
           <>
+            {(() => {
+              const SelIcon = getFacilityIcon(selected);
+              return (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-50)] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
+                  <SelIcon size={16} strokeWidth={1.75} />
+                </span>
+              );
+            })()}
             <span className="min-w-0 flex-1 truncate text-[var(--neutral-900)]">
               <span className="font-medium">{selected.name}</span>
               {selected.location && (
@@ -112,7 +118,7 @@ export function FacilityPicker({
               )}
             </span>
             <span className="shrink-0 rounded-full bg-[var(--neutral-100)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--neutral-600)]">
-              {MANAGING_UNIT_LABEL[selected.managingUnit]}
+              {resolveFacilityFilterKey(selected)}
             </span>
           </>
         ) : (
@@ -124,11 +130,14 @@ export function FacilityPicker({
         />
       </button>
 
-      {open && (
-        <div
-          className="absolute z-30 mt-1 w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-lg,0_10px_25px_-5px_rgba(0,0,0,0.15))]"
-          role="listbox"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={wrapRef}
+        inline={inline}
+        className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-lg,0_10px_25px_-5px_rgba(0,0,0,0.15))]"
+      >
+        <div role="listbox">
           <div className="border-b border-[var(--neutral-100)] p-2">
             <div className="relative">
               <Search size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--neutral-400)]" />
@@ -143,53 +152,78 @@ export function FacilityPicker({
             </div>
           </div>
 
-          <div className="max-h-[320px] overflow-y-auto">
-            {UNIT_ORDER.map((unit, idx) => {
-              const items = filtered[unit];
-              const UnitIcon = UNIT_ICON[unit];
-              const a = UNIT_ACCENT[unit];
-              return (
-                <details
-                  key={unit}
-                  open
-                  className={`group ${idx > 0 ? 'border-t border-[var(--neutral-200)]' : ''}`}
+          <div className={inline ? 'max-h-[240px] overflow-y-auto' : 'max-h-[320px] overflow-y-auto'}>
+            {allowAll && (
+              <div className="border-b border-[var(--neutral-100)] p-1">
+                <button
+                  type="button"
+                  onClick={() => pickId(allValue)}
+                  className={
+                    isAllSelected
+                      ? 'flex w-full items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--primary-50)] px-2.5 py-2 text-left text-[12px] font-medium text-[var(--primary-900)] ring-1 ring-[var(--primary-100)]'
+                      : 'flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-left text-[12px] font-medium text-[var(--neutral-800)] transition-colors hover:bg-[var(--neutral-50)]'
+                  }
                 >
-                  <summary className={`relative flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] ${a.fg} transition-colors hover:bg-[var(--neutral-50)]`}>
-                    <span className={`absolute left-0 top-0 h-full w-[3px] ${a.bar}`} />
-                    <span className="flex items-center gap-1.5 pl-1">
-                      <UnitIcon size={12} />
-                      {MANAGING_UNIT_LABEL[unit]}
-                      <span className="font-normal text-[var(--neutral-400)] normal-case tracking-normal">
-                        — {MANAGING_UNIT_DESC[unit]}
+                  <span className="flex-1">{allLabel}</span>
+                  {isAllSelected && <Check size={13} className="shrink-0 text-[var(--primary-700)]" />}
+                </button>
+              </div>
+            )}
+            {visibleKeys.length === 0 && !allowAll ? (
+              <p className="px-3 py-4 text-center text-[12px] text-[var(--neutral-500)]">
+                {q ? 'Tidak ada fasilitas cocok.' : 'Belum ada fasilitas aktif.'}
+              </p>
+            ) : visibleKeys.length === 0 ? (
+              q ? (
+                <p className="px-3 py-4 text-center text-[12px] text-[var(--neutral-500)]">Tidak ada fasilitas cocok.</p>
+              ) : null
+            ) : (
+              visibleKeys.map((categoryKey, idx) => {
+                const items = grouped.get(categoryKey) ?? [];
+                const CatIcon = getFilterIcon(categoryKey);
+                const a = GROUP_ACCENT;
+                return (
+                  <div
+                    key={categoryKey}
+                    className={idx > 0 ? 'border-t border-[var(--neutral-200)]' : ''}
+                  >
+                    <div
+                      className={`relative flex items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold ${a.fg}`}
+                    >
+                      <span className={`absolute left-0 top-0 h-full w-[3px] ${a.bar}`} />
+                      <span className="flex items-center gap-1.5 pl-1 normal-case tracking-normal">
+                        <CatIcon size={12} />
+                        {categoryKey}
                       </span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
                       <span className={`rounded-full ${a.bg} ${a.fg} px-1.5 text-[10px] font-bold tabular-nums`}>
                         {items.length}
                       </span>
-                      <ChevronDown size={11} className="text-[var(--neutral-400)] transition-transform group-open:rotate-180" />
-                    </span>
-                  </summary>
-                  {items.length === 0 ? (
-                    <p className="px-3 py-2 pl-4 text-[11px] text-[var(--neutral-400)]">
-                      {q ? 'Tidak ada fasilitas cocok.' : 'Belum ada fasilitas aktif.'}
-                    </p>
-                  ) : (
+                    </div>
                     <ul className="relative pb-1.5 pl-1 pr-1">
                       <span className={`absolute left-0 top-0 h-full w-[3px] ${a.bar} opacity-50`} />
                       {items.map((f) => {
                         const isSelected = String(f.id) === value;
+                        const FIcon = getFacilityIcon(f);
                         return (
                           <li key={f.id}>
                             <button
                               type="button"
-                              onClick={() => pick(f)}
+                              onClick={() => pickId(String(f.id))}
                               className={
                                 isSelected
                                   ? 'flex w-full items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--primary-50)] px-2.5 py-1.5 text-left text-[12px] ring-1 ring-[var(--primary-100)]'
                                   : 'flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-[var(--neutral-50)]'
                               }
                             >
+                              <span
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ${
+                                  isSelected
+                                    ? 'bg-white text-[var(--primary-700)] ring-[var(--primary-100)]'
+                                    : 'bg-[var(--neutral-100)] text-[var(--neutral-600)] ring-[var(--neutral-200)]'
+                                }`}
+                              >
+                                <FIcon size={15} strokeWidth={1.75} />
+                              </span>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate font-medium text-[var(--neutral-900)]">{f.name}</p>
                                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 truncate text-[10.5px] text-[var(--neutral-500)]">
@@ -214,13 +248,13 @@ export function FacilityPicker({
                         );
                       })}
                     </ul>
-                  )}
-                </details>
-              );
-            })}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
-      )}
+      </FloatingPanel>
     </div>
   );
 }

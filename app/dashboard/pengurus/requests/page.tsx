@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Info, CheckCircle2, AlertTriangle, XCircle, ArrowRight, MapPin, Plus } from 'lucide-react';
 import { formatWIBDate, formatWIBTime } from '@/utils/date';
 import type { FacilityRequest, RequestStatus } from '@/types';
+import { REQUEST_LIST_ORDER_SQL } from '@/utils/priority';
 
 type Row = FacilityRequest & {
   facilityName: string;
@@ -56,7 +57,7 @@ function inlineBanner(r: Row): React.ReactNode {
   if (r.status === 'APPROVED') {
     return (
       <Banner tone="success" icon={<CheckCircle2 size={14} />}>
-        <strong className="font-semibold">Disetujui.</strong> Lihat detail untuk mengunduh surat persetujuan.
+        <strong className="font-semibold">Disetujui.</strong> Lihat detail untuk membuka surat persetujuan.
       </Banner>
     );
   }
@@ -112,7 +113,7 @@ export default async function MyRequestsPage({
        ) m ON m.requestId = al.requestId AND m.maxId = al.id
      ) latest ON latest.requestId = fr.id
      WHERE fr.userId = ?
-     ORDER BY fr.createdAt DESC`,
+     ORDER BY ${REQUEST_LIST_ORDER_SQL}`,
     [session.userId]
   );
 

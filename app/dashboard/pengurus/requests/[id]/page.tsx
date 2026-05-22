@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   ArrowLeft,
-  Download,
+  Eye,
   Pencil,
   Calendar as CalendarIcon,
   Clock,
@@ -25,7 +25,6 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Timeline } from '@/components/dashboard/Timeline';
 import { Button } from '@/components/ui/Button';
 import { CancelButton } from '@/components/dashboard/CancelButton';
-import { SignedLetterUploader } from '@/components/dashboard/SignedLetterUploader';
 import { OverrideOfferCard } from '@/components/dashboard/OverrideOfferCard';
 import { formatWIBDate, formatWIBTime } from '@/utils/date';
 import { ACTIVITY_SCOPE_LABEL } from '@/types';
@@ -39,7 +38,7 @@ function bannerFor(status: RequestStatus, latestNote: string | null, latestActio
       tone: 'success' as const,
       icon: <CheckCircle2 size={16} />,
       title: 'Pengajuan disetujui',
-      body: 'Silakan unduh surat persetujuan dan ambil kunci/perlengkapan sesuai instruksi pengelola fasilitas.',
+      body: 'Silakan lihat surat persetujuan dan ambil kunci/perlengkapan sesuai instruksi pengelola fasilitas.',
     };
   }
   if (status === 'REVISION_REQUESTED') {
@@ -49,6 +48,14 @@ function bannerFor(status: RequestStatus, latestNote: string | null, latestActio
       icon: <Info size={16} />,
       title: isAlt ? 'Admin menawarkan alternatif' : 'Admin meminta revisi',
       body: latestNote || 'Tidak ada catatan tambahan dari admin.',
+    };
+  }
+  if (status === 'WAITING_ADMIN_UNIT') {
+    return {
+      tone: 'info' as const,
+      icon: <Info size={16} />,
+      title: 'Menunggu review Admin Unit',
+      body: 'Surat permohonan telah divalidasi WR3/WD3 dan otomatis diteruskan ke Admin Unit. Gunakan tombol Lihat Surat untuk membuka salinan digital.',
     };
   }
   if (status === 'ON_HOLD') {
@@ -161,10 +168,10 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               {(req.status === 'APPROVED' || req.status === 'WAITING_ADMIN_UNIT') && (
-                <Link href={`/surat/${req.id}`} target="_blank">
+                <Link href={`/surat/${req.id}`} target="_blank" rel="noopener noreferrer">
                   <Button variant="primary" className="bg-white !text-[var(--primary-800)] hover:bg-white/95">
-                    <Download size={14} />
-                    Unduh Surat
+                    <Eye size={14} />
+                    Lihat Surat
                   </Button>
                 </Link>
               )}
@@ -219,29 +226,25 @@ export default async function PengurusRequestDetail({ params }: { params: Promis
               <Item icon={<FileText size={13} />} label="Tujuan" value={req.purpose} full />
               <Item icon={<FileText size={13} />} label="Deskripsi" value={req.description} full />
               <Item icon={<FileText size={13} />} label="Kebutuhan Tambahan" value={req.additionalNeeds ?? '-'} full />
-              {req.attachmentUrl && (
-                <Item
-                  icon={<FileText size={13} />}
-                  label="Lampiran"
-                  value={
-                    <a
-                      href={req.attachmentUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[var(--primary-700)] underline-offset-2 hover:underline"
-                    >
-                      Buka tautan lampiran
-                    </a>
-                  }
-                  full
-                />
-              )}
-              {req.notes && <Item icon={<FileText size={13} />} label="Catatan Pengaju" value={req.notes} full />}
             </dl>
           </section>
 
           {req.status === 'WAITING_ADMIN_UNIT' && (
-            <SignedLetterUploader requestId={req.id} currentUrl={req.signedLetterUrl} />
+            <section className="rounded-[var(--radius-lg)] border border-[var(--primary-100)] bg-[var(--primary-50)]/40 p-5 shadow-[var(--shadow-xs)]">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-white text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
+                  <FileText size={17} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-[var(--neutral-900)]">Surat sudah diteruskan ke Admin Unit</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--neutral-600)]">
+                    Setelah disetujui WR3/WD3, surat permohonan digital otomatis masuk ke Admin Unit untuk
+                    ditinjau. Anda tidak perlu mengunggah surat lagi — cukup lihat salinan digital melalui tombol di
+                    atas jika diperlukan.
+                  </p>
+                </div>
+              </div>
+            </section>
           )}
 
           {req.status === 'OVERRIDE_OFFERED' &&

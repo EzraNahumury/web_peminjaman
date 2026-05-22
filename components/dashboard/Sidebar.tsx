@@ -6,20 +6,19 @@ import { motion } from 'framer-motion';
 import {
   Home,
   ListTodo,
-  PlusCircle,
   Building2,
-  Bell,
   Inbox,
   Lock,
   Settings,
   Users,
   User,
-  GraduationCap,
   LogOut,
   MessageCircle,
   Mail,
+  PenTool,
   type LucideIcon,
 } from 'lucide-react';
+import { UkdwLogo } from '@/components/brand/UkdwLogo';
 import type { Role } from '@/types';
 import { cn } from '@/lib/cn';
 import { logout } from '@/app/actions/auth';
@@ -30,18 +29,19 @@ const MENUS: Record<Role, MenuItem[]> = {
   PENGURUS: [
     { label: 'Beranda', href: '/dashboard/pengurus', icon: Home },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
-    { label: 'Ajukan Peminjaman', href: '/dashboard/pengurus/requests/new', icon: PlusCircle },
     { label: 'Status Peminjaman', href: '/dashboard/pengurus/requests', icon: ListTodo },
   ],
   BIRO_III: [
     { label: 'Beranda', href: '/dashboard/biro-iii', icon: Home },
     { label: 'Antrian Validasi', href: '/dashboard/biro-iii/requests', icon: Inbox },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
+    { label: 'Upload TTD', href: '/dashboard/profile', icon: PenTool },
   ],
   WR3_WD3: [
     { label: 'Beranda', href: '/dashboard/wr3-wd3', icon: Home },
     { label: 'Antrian Validasi', href: '/dashboard/wr3-wd3/requests', icon: Inbox },
     { label: 'Daftar Fasilitas', href: '/dashboard/facilities', icon: Building2 },
+    { label: 'Upload TTD', href: '/dashboard/profile', icon: PenTool },
   ],
   ADMIN_UNIT: [
     { label: 'Beranda', href: '/dashboard/admin-unit', icon: Home },
@@ -96,19 +96,19 @@ export function Sidebar({
           background: 'linear-gradient(180deg, var(--primary-900) 0%, var(--primary-800) 100%)',
         }}
       >
-        <div className="flex items-center gap-3 px-5 pt-6 pb-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-white/12 ring-1 ring-white/15">
-            <GraduationCap className="h-5 w-5 text-white" strokeWidth={2.1} />
+        <div className="flex h-[60px] shrink-0 items-center gap-3 px-5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] bg-white/12 p-1.5 ring-1 ring-white/15">
+            <UkdwLogo width={28} height={28} className="h-full w-full" priority />
           </div>
           <div className="min-w-0">
-            <p className="text-[15px] font-bold tracking-tight text-white">FASKO</p>
-            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/60">
+            <p className="text-[14px] font-bold leading-tight tracking-tight text-white">FASKO</p>
+            <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-white/60">
               Peminjaman Fasilitas
             </p>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        <nav className="flex-1 overflow-y-auto px-3 pb-4 pt-3">
           <p className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
             {SECTION_LABEL[role]}
           </p>
@@ -161,21 +161,30 @@ export function Sidebar({
         </nav>
 
         <div className="border-t border-white/10 p-3">
-          <div className="flex items-center gap-2.5 rounded-[var(--radius-md)] bg-white/[0.04] p-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] text-[11px] font-bold text-white ring-1 ring-white/10">
-              {initials || 'U'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12.5px] font-semibold leading-tight text-white">{name}</p>
-              <p className="mt-0.5 truncate text-[10.5px] leading-tight text-white/55">
-                {identityNumber || SECTION_LABEL[role]}
-              </p>
-            </div>
+          <div className="flex items-center gap-1 rounded-[var(--radius-md)] bg-white/[0.04] p-1.5 ring-1 ring-white/[0.06]">
+            <Link
+              href="/dashboard/profile"
+              className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-sm)] px-2 py-2 transition-colors hover:bg-white/[0.08]"
+              title="Profil & pengaturan"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] text-[11px] font-bold text-white ring-1 ring-white/10 transition-transform group-hover:scale-[1.02]">
+                {initials || 'U'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12.5px] font-semibold leading-tight text-white group-hover:text-white">
+                  {name}
+                </p>
+                <p className="mt-0.5 flex items-center gap-1 truncate text-[10.5px] leading-tight text-white/55">
+                  <User size={10} className="shrink-0 opacity-70" />
+                  <span className="truncate">{identityNumber || SECTION_LABEL[role]}</span>
+                </p>
+              </div>
+            </Link>
             <button
               type="button"
               onClick={() => startLogout(() => logout())}
               disabled={pending}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-white/55 transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-white/55 transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
               aria-label="Keluar"
               title="Keluar"
             >

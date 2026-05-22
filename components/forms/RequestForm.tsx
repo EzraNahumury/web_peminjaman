@@ -1,9 +1,9 @@
 'use client';
-import { useActionState, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import {
-  Search,
   CheckCircle2,
   XCircle,
   Building2,
@@ -12,15 +12,22 @@ import {
   CalendarDays,
   ClipboardList,
   UserRound,
+  AlertTriangle,
 } from 'lucide-react';
-import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { Field, Input, Textarea } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import { FacilityPicker } from '@/components/forms/FacilityPicker';
+import { getFacilityIcon } from '@/lib/facility-icons';
 import { DatePicker } from '@/components/forms/DatePicker';
+import { OptionPicker } from '@/components/forms/OptionPicker';
+import { TimePicker } from '@/components/forms/TimePicker';
 import {
   checkAvailability,
   createFacilityRequest,
+  getFacilitySchedule,
   updateRevisionRequest,
+  type FacilityScheduleItem,
+  type RequestFormPayload,
   type RequestFormState,
 } from '@/app/actions/requests';
 import {
@@ -29,6 +36,7 @@ import {
   type Facility,
   type FacilityRequest,
 } from '@/types';
+import { isDateBeforeToday, nowTimeISO, todayDateISO } from '@/utils/date';
 
 const PURPOSE_OPTIONS = [
   'Seminar / Workshop',
@@ -48,33 +56,219 @@ type Props = {
   lockedFacility?: Facility;
   facilities?: Facility[];
   initial?: FacilityRequest;
+  /** Logo organisasi & tanda tangan sudah lengkap. Jika false, pengajuan diblokir. */
+  assetsReady?: boolean;
 };
 
-export function RequestForm({ mode, lockedFacility, facilities, initial }: Props) {
+export function RequestForm({ mode, lockedFacility, facilities, initial, assetsReady = true }: Props) {
   const router = useRouter();
-  const action =
-    mode === 'create' ? createFacilityRequest : updateRevisionRequest.bind(null, initial!.id);
-  const [state, formAction, pending] = useActionState<RequestFormState, FormData>(action, undefined);
-  const errs = state?.fieldErrors ?? {};
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // URL form ini, dibawa ke Profil agar bisa kembali ke sini setelah upload.
+  const returnUrl = `${pathname}${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const profileHref = `/dashboard/profile?return=${encodeURIComponent(returnUrl)}`;
+  const formRef = useRef<HTMLFormElement>(null);
+  const [state, setState] = useState<RequestFormState>(undefined);
+  const [submitting, startSubmit] = useTransition();
+  const errs = state && !('ok' in state) ? state.fieldErrors ?? {} : {};
 
   const [pickedFacilityId, setPickedFacilityId] = useState<string>(
-    lockedFacility ? String(lockedFacility.id) : initial ? String(initial.facilityId) : ''
+    lockedFacility ? String(lockedFacility.id) : initial?.facilityId ? String(initial.facilityId) : ''
   );
   const facilityId = lockedFacility ? String(lockedFacility.id) : pickedFacilityId;
   const [activityName, setActivityName] = useState<string>(initial?.activityName ?? '');
   const [organizationName, setOrganizationName] = useState<string>(initial?.organizationName ?? '');
-  const [startDate, setStartDate] = useState<string>(initial ? toDateOnly(initial.startDateTime) : '');
-  const [startTime, setStartTime] = useState<string>(initial ? toTimeOnly(initial.startDateTime) : '');
-  const [endDate, setEndDate] = useState<string>(initial ? toDateOnly(initial.endDateTime) : '');
-  const [endTime, setEndTime] = useState<string>(initial ? toTimeOnly(initial.endDateTime) : '');
+  const [startDate, setStartDate] = useState<string>(initial?.startDateTime ? toDateOnly(initial.startDateTime) : '');
+  const [startTime, setStartTime] = useState<string>(initial?.startDateTime ? toTimeOnly(initial.startDateTime) : '');
+  const [endDate, setEndDate] = useState<string>(initial?.endDateTime ? toDateOnly(initial.endDateTime) : '');
+  const [endTime, setEndTime] = useState<string>(initial?.endDateTime ? toTimeOnly(initial.endDateTime) : '');
   const start = useMemo(() => (startDate && startTime ? `${startDate}T${startTime}` : ''), [startDate, startTime]);
   const end = useMemo(() => (endDate && endTime ? `${endDate}T${endTime}` : ''), [endDate, endTime]);
+
+  const todayStr = todayDateISO();
+  const minEndDate = startDate && startDate >= todayStr ? startDate : todayStr;
+  const isStartToday = startDate === todayStr;
+  const isEndToday = endDate === todayStr;
+  const minStartTime = isStartToday ? nowTimeISO() : undefined;
+  const minEndTime =
+    endDate && startDate && endDate === startDate && startTime
+      ? startTime
+      : isEndToday
+        ? nowTimeISO()
+        : undefined;
   const [participants, setParticipants] = useState<string>(
     initial?.participantCount != null ? String(initial.participantCount) : ''
   );
   const [purpose, setPurpose] = useState<string>(initial?.purpose ?? '');
   const [personInCharge, setPersonInCharge] = useState<string>(initial?.personInCharge ?? '');
   const [scope, setScope] = useState<'UNIVERSITAS' | 'FAKULTAS'>(initial?.activityScope ?? 'UNIVERSITAS');
+  const [activityLevel, setActivityLevel] = useState<'KEMAHASISWAAN' | 'INSTITUSIONAL' | 'AKADEMIK'>(
+    initial?.activityLevel ?? 'KEMAHASISWAAN'
+  );
+  const [additionalNeeds, setAdditionalNeeds] = useState<string>(initial?.additionalNeeds ?? '');
+  const [identityNumber, setIdentityNumber] = useState<string>(initial?.identityNumber ?? '');
+  const [phone, setPhone] = useState<string>(initial?.phone ?? '');
+  const [email, setEmail] = useState<string>(initial?.email ?? '');
+
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  const FIELD_LABELS: Record<string, string> = {
+    facilityId: 'Fasilitas',
+    startDateTime: 'Tanggal / jam mulai',
+    endDateTime: 'Tanggal / jam selesai',
+    purpose: 'Tujuan peminjaman',
+    activityName: 'Nama kegiatan',
+    activityScope: 'Lingkup kegiatan',
+    activityLevel: 'Jenis kegiatan',
+    personInCharge: 'Nama PIC',
+    organizationName: 'Nama organisasi / LK / OK',
+    participantCount: 'Jumlah peserta',
+    phone: 'No HP',
+    email: 'Email',
+    identityNumber: 'NIM / NIDN / ID',
+  };
+
+  function buildPayload(): RequestFormPayload {
+    return {
+      facilityId,
+      activityName,
+      organizationName,
+      personInCharge,
+      identityNumber,
+      email,
+      phone,
+      startDateTime: start,
+      endDateTime: end,
+      participantCount: participantsEnabled && participants ? participants : undefined,
+      purpose,
+      activityScope: scope,
+      activityLevel,
+      additionalNeeds: additionalNeeds || undefined,
+    };
+  }
+
+  function fieldErrorSummary(fieldErrors: Record<string, string[]>) {
+    return Object.entries(fieldErrors).map(([key, msgs]) => {
+      const label = FIELD_LABELS[key] ?? key;
+      return `${label}: ${msgs[0]}`;
+    });
+  }
+
+  function handleStartDateChange(v: string) {
+    setStartDate(v);
+    if (endDate && v && endDate < v) setEndDate(v);
+    if (v === todayStr && startTime && startTime < nowTimeISO()) setStartTime('');
+  }
+
+  function handleEndDateChange(v: string) {
+    setEndDate(v);
+    if (v === todayStr && endTime && endTime < nowTimeISO()) setEndTime('');
+  }
+
+  useEffect(() => {
+    if (isDateBeforeToday(startDate)) setStartDate('');
+    if (isDateBeforeToday(endDate)) setEndDate('');
+  }, []);
+
+  function validateBeforeSubmit(): string | null {
+    if (!assetsReady) {
+      return 'Lengkapi logo organisasi & tanda tangan di halaman Profil sebelum mengajukan peminjaman.';
+    }
+    if (!facilityId) return 'Pilih fasilitas terlebih dahulu.';
+    if (!startDate) return 'Tanggal mulai wajib diisi.';
+    if (!startTime) return 'Jam mulai wajib diisi.';
+    if (!endDate) return 'Tanggal selesai wajib diisi.';
+    if (!endTime) return 'Jam selesai wajib diisi.';
+    if (isDateBeforeToday(startDate) || isDateBeforeToday(endDate)) {
+      return 'Tanggal peminjaman tidak boleh sebelum hari ini.';
+    }
+    if (!start || !end || new Date(end) <= new Date(start)) {
+      return 'Tanggal/jam selesai harus setelah tanggal/jam mulai.';
+    }
+    if (new Date(start) < new Date()) {
+      return 'Waktu mulai tidak boleh di masa lalu.';
+    }
+    if (!purpose) return 'Pilih tujuan peminjaman.';
+    if (!activityName.trim()) return 'Nama kegiatan wajib diisi.';
+    if (!organizationName.trim()) return 'Nama organisasi wajib diisi.';
+    if (!personInCharge.trim()) return 'Nama PIC wajib diisi.';
+    if (!phone.trim()) return 'No HP wajib diisi.';
+    if (!email.trim()) return 'Email wajib diisi.';
+    const form = formRef.current;
+    if (form && !form.checkValidity()) {
+      const invalid = form.querySelector<HTMLElement>(':invalid');
+      if (invalid) {
+        invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        invalid.focus();
+      }
+      const fieldName = invalid?.getAttribute('name') || '';
+      const label =
+        FIELD_LABELS[fieldName] || (invalid?.getAttribute('type') === 'time' ? 'Jam mulai / selesai' : 'Isian');
+      return `${label} wajib diisi atau belum valid.`;
+    }
+    return null;
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setClientError(null);
+    setState(undefined);
+
+    const validationMsg = validateBeforeSubmit();
+    if (validationMsg) {
+      setClientError(validationMsg);
+      toast.error(validationMsg);
+      return;
+    }
+
+    const payload = buildPayload();
+    startSubmit(async () => {
+      const res =
+        mode === 'create'
+          ? await createFacilityRequest(undefined, payload)
+          : await updateRevisionRequest(initial!.id, undefined, payload);
+
+      if (res && 'ok' in res && res.ok) {
+        toast.success(mode === 'create' ? 'Pengajuan berhasil dikirim' : 'Revisi berhasil disubmit ulang', {
+          description: 'Anda akan diarahkan ke halaman detail pengajuan.',
+        });
+        router.push(`/dashboard/pengurus/requests/${res.requestId}`);
+        return;
+      }
+
+      setState(res);
+      if (res && !('ok' in res)) {
+        if (res.fieldErrors) {
+          const summary = fieldErrorSummary(res.fieldErrors).join(' · ');
+          setClientError(summary || 'Beberapa isian belum valid.');
+          toast.error('Periksa kembali isian form', { description: summary });
+          return;
+        }
+        if (res.error) {
+          toast.error('Gagal mengirim pengajuan', { description: res.error });
+        }
+      }
+    });
+  }
+
+  function handleFormChange() {
+    if (clientError) setClientError(null);
+    if (state && !('ok' in state) && (state.fieldErrors || state.error)) {
+      setState(undefined);
+    }
+  }
+
+  useEffect(() => {
+    if (!state || 'ok' in state || !state.fieldErrors) return;
+    const firstKey = Object.keys(state.fieldErrors)[0];
+    if (!firstKey || !formRef.current) return;
+    const el =
+      formRef.current.querySelector(`[name="${firstKey}"]`) ??
+      formRef.current.querySelector(`[data-field="${firstKey}"]`);
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [state]);
 
   const [avail, setAvail] = useState<null | {
     available: boolean;
@@ -83,11 +277,61 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
     blockReason: string | null;
   }>(null);
   const [checking, startChecking] = useTransition();
+  const [schedule, setSchedule] = useState<FacilityScheduleItem[]>([]);
+
+  // Ambil jadwal terisi setiap kali fasilitas berganti — untuk menandai kalender.
+  useEffect(() => {
+    if (!facilityId) {
+      setSchedule([]);
+      return;
+    }
+    let cancelled = false;
+    getFacilitySchedule(Number(facilityId)).then((rows) => {
+      if (!cancelled) setSchedule(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
+
+  // Tanggal yang sudah terisi (booking/blokir) → penanda di DatePicker.
+  const dayMarkers = useMemo(() => {
+    const m: Record<string, 'booking' | 'block'> = {};
+    for (const it of schedule) {
+      const s = new Date(it.start);
+      const e = new Date(it.end);
+      const cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+      const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+      while (cur <= last) {
+        const k = toDateOnly(cur);
+        if (it.kind === 'block') m[k] = 'block';
+        else if (!m[k]) m[k] = 'booking';
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return m;
+  }, [schedule]);
+
+  // Agenda yang menyentuh tanggal mulai yang dipilih user.
+  const selectedDayItems = useMemo(() => {
+    if (!startDate) return [];
+    return schedule.filter((it) => {
+      const ds = toDateOnly(new Date(it.start));
+      const de = toDateOnly(new Date(it.end));
+      return startDate >= ds && startDate <= de;
+    });
+  }, [schedule, startDate]);
 
   const selectedFacility = useMemo<Facility | undefined>(() => {
     if (lockedFacility) return lockedFacility;
     return facilities?.find((f) => String(f.id) === facilityId);
   }, [lockedFacility, facilities, facilityId]);
+
+  const participantsEnabled = useMemo(() => {
+    const cat = selectedFacility?.category?.toLowerCase() ?? '';
+    if (!cat) return false;
+    return !cat.includes('peralatan') && !cat.includes('kendaraan');
+  }, [selectedFacility]);
 
   const duration = useMemo(() => {
     if (!start || !end) return null;
@@ -98,25 +342,61 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
     return h > 0 ? `${h} jam${m ? ` ${m} mnt` : ''}` : `${m} mnt`;
   }, [start, end]);
 
-  function doCheck() {
-    if (!facilityId || !start || !end) return;
-    startChecking(async () => {
-      const res = await checkAvailability(Number(facilityId), start, end);
-      setAvail({
-        available: res.available,
-        alternatives: res.alternatives,
-        blocked: res.blocked,
-        blockReason: res.blockReason,
+  // Cek ketersediaan otomatis begitu fasilitas + tanggal + jam lengkap.
+  useEffect(() => {
+    if (!facilityId || !start || !end || new Date(end) <= new Date(start)) {
+      setAvail(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      startChecking(async () => {
+        const res = await checkAvailability(Number(facilityId), start, end);
+        setAvail({
+          available: res.available,
+          alternatives: res.alternatives,
+          blocked: res.blocked,
+          blockReason: res.blockReason,
+        });
       });
-    });
-  }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [facilityId, start, end]);
 
   return (
-    <form action={formAction} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      onChange={handleFormChange}
+      className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
+    >
       <div className="space-y-5">
         {/* Hidden inputs */}
         <input type="hidden" name="startDateTime" value={start} />
         <input type="hidden" name="endDateTime" value={end} />
+
+        {/* Hint — logo & tanda tangan wajib lengkap sebelum mengajukan */}
+        {!assetsReady && (
+          <div className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 p-3.5">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-700" />
+              <div className="min-w-0 flex-1 text-[12.5px]">
+                <p className="font-semibold text-amber-900">
+                  Logo organisasi &amp; tanda tangan belum lengkap
+                </p>
+                <p className="mt-0.5 text-amber-800">
+                  Keduanya wajib diunggah lebih dulu — dipakai pada surat permohonan. Pengajuan
+                  tidak dapat dikirim sampai keduanya lengkap.
+                </p>
+                <Link
+                  href={profileHref}
+                  className="mt-1.5 inline-flex items-center gap-1 font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-950"
+                >
+                  Lengkapi di halaman Profil →
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* SECTION — Fasilitas */}
         <Section
@@ -124,14 +404,20 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
           eyebrow="01 · Fasilitas"
           title={mode === 'create' ? 'Pilih ruangan atau peralatan' : 'Ubah pengajuan'}
           description="Sistem akan otomatis memeriksa tabrakan jadwal sebelum permohonan dikirim."
+          data-field="facilityId"
         >
           {lockedFacility ? (
             <div className="rounded-[var(--radius-md)] border border-[var(--primary-100)] bg-[var(--primary-50)] p-4">
               <input type="hidden" name="facilityId" value={facilityId} />
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-white text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
-                  <Building2 size={17} strokeWidth={2.1} />
-                </div>
+                {(() => {
+                  const FacIcon = getFacilityIcon(lockedFacility);
+                  return (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-white text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
+                      <FacIcon size={18} strokeWidth={1.75} />
+                    </div>
+                  );
+                })()}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] font-semibold text-[var(--neutral-900)]">{lockedFacility.name}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[var(--neutral-600)]">
@@ -162,7 +448,7 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
             </div>
           ) : (
             <Field label="Fasilitas" error={errs.facilityId} required>
-              <input type="hidden" name="facilityId" value={pickedFacilityId} />
+              <input type="hidden" name="facilityId" data-field="facilityId" value={pickedFacilityId} />
               <FacilityPicker
                 facilities={facilities ?? []}
                 value={pickedFacilityId}
@@ -178,15 +464,16 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
               hint="Universitas divalidasi WR3 · Fakultas divalidasi WD3"
               required
             >
-              <Select
+              <OptionPicker
                 name="activityScope"
                 value={scope}
-                onChange={(e) => setScope(e.target.value as 'UNIVERSITAS' | 'FAKULTAS')}
+                onChange={(v) => setScope(v as 'UNIVERSITAS' | 'FAKULTAS')}
                 required
-              >
-                <option value="UNIVERSITAS">Tingkat Universitas</option>
-                <option value="FAKULTAS">Tingkat Fakultas</option>
-              </Select>
+                options={[
+                  { value: 'UNIVERSITAS', label: 'Tingkat Universitas' },
+                  { value: 'FAKULTAS', label: 'Tingkat Fakultas' },
+                ]}
+              />
             </Field>
             <Field
               label="Jenis kegiatan"
@@ -194,36 +481,112 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
               hint="Akademik > Institusional > Kemahasiswaan"
               required
             >
-              <Select name="activityLevel" defaultValue={initial?.activityLevel ?? 'KEMAHASISWAAN'} required>
-                <option value="KEMAHASISWAAN">Kemahasiswaan</option>
-                <option value="INSTITUSIONAL">Institusional</option>
-                <option value="AKADEMIK">Akademik</option>
-              </Select>
+              <OptionPicker
+                name="activityLevel"
+                value={activityLevel}
+                onChange={(v) =>
+                  setActivityLevel(v as 'KEMAHASISWAAN' | 'INSTITUSIONAL' | 'AKADEMIK')
+                }
+                required
+                options={[
+                  { value: 'KEMAHASISWAAN', label: 'Kemahasiswaan' },
+                  { value: 'INSTITUSIONAL', label: 'Institusional' },
+                  { value: 'AKADEMIK', label: 'Akademik' },
+                ]}
+              />
             </Field>
           </div>
         </Section>
 
         {/* SECTION — Jadwal */}
-        <Section icon={<CalendarDays size={15} />} eyebrow="02 · Jadwal" title="Tanggal dan waktu penggunaan">
+        <Section
+          icon={<CalendarDays size={15} />}
+          eyebrow="02 · Jadwal"
+          title="Tanggal dan waktu penggunaan"
+          description="Tanggal yang sudah terisi peminjaman ditandai pada kalender. Ketersediaan diperiksa otomatis."
+          data-field="startDateTime"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tanggal mulai" error={errs.startDateTime} required>
-              <DatePicker value={startDate} onChange={setStartDate} placeholder="Pilih tanggal mulai" />
-            </Field>
-            <Field label="Tanggal selesai" error={errs.endDateTime} required>
+            <Field
+              label="Tanggal mulai"
+              error={errs.startDateTime}
+              hint="Tidak bisa memilih tanggal sebelum hari ini (WIB)."
+              required
+            >
               <DatePicker
-                value={endDate}
-                onChange={setEndDate}
-                min={startDate}
-                placeholder="Pilih tanggal selesai"
+                value={startDate}
+                onChange={handleStartDateChange}
+                min={todayStr}
+                placeholder="Pilih tanggal mulai"
+                dayMarkers={dayMarkers}
               />
             </Field>
-            <Field label="Jam mulai" required>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+            <Field
+              label="Tanggal selesai"
+              error={errs.endDateTime}
+              hint="Minimal hari ini atau sama dengan tanggal mulai."
+              required
+            >
+              <DatePicker
+                value={endDate}
+                onChange={handleEndDateChange}
+                min={minEndDate}
+                placeholder="Pilih tanggal selesai"
+                dayMarkers={dayMarkers}
+              />
             </Field>
-            <Field label="Jam selesai" required>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+            <Field label="Jam mulai" error={errs.startDateTime} required>
+              <TimePicker
+                value={startTime}
+                onChange={setStartTime}
+                min={minStartTime}
+                placeholder="Pilih jam mulai"
+                required
+              />
+            </Field>
+            <Field label="Jam selesai" error={errs.endDateTime} required>
+              <TimePicker
+                value={endTime}
+                onChange={setEndTime}
+                min={minEndTime}
+                placeholder="Pilih jam selesai"
+                required
+              />
             </Field>
           </div>
+
+          {selectedDayItems.length > 0 && (
+            <div className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 p-3.5">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-700" />
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-semibold text-amber-900">
+                    {formatDateOnly(startDate)} sudah terisi {selectedDayItems.length} agenda pada fasilitas ini
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {selectedDayItems.slice(0, 4).map((it, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-[11.5px] text-amber-800">
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-500" />
+                        <span>
+                          {it.kind === 'block' ? `Diblokir admin: ${it.label}` : it.label} ·{' '}
+                          {formatTimeOnly(it.start)}–{formatTimeOnly(it.end)} WIB
+                        </span>
+                      </li>
+                    ))}
+                    {selectedDayItems.length > 4 && (
+                      <li className="text-[11px] text-amber-700">
+                        +{selectedDayItems.length - 4} agenda lainnya
+                      </li>
+                    )}
+                  </ul>
+                  <p className="mt-1.5 text-[11.5px] text-amber-700">
+                    Pilih jam di luar rentang tersebut. Bila tetap bentrok, sistem akan menawarkan fasilitas
+                    alternatif di panel ringkasan.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {duration && (
             <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--neutral-100)] px-3 py-1 text-[11.5px] font-medium text-[var(--neutral-700)]">
@@ -246,37 +609,35 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Tujuan peminjaman" error={errs.purpose} required>
-              <Select
+              <OptionPicker
                 name="purpose"
                 value={PURPOSE_OPTIONS.includes(purpose) ? purpose : ''}
-                onChange={(e) => setPurpose(e.target.value)}
+                onChange={setPurpose}
+                placeholder="Pilih tujuan"
                 required
-              >
-                <option value="">Pilih tujuan</option>
-                {PURPOSE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </Select>
+                options={PURPOSE_OPTIONS.map((opt) => ({ value: opt, label: opt }))}
+              />
             </Field>
             <Field
               label="Jumlah peserta"
               error={errs.participantCount}
               hint={
-                selectedFacility?.capacity != null
-                  ? `Maks. ${selectedFacility.capacity} orang`
-                  : undefined
+                !participantsEnabled
+                  ? 'Tidak berlaku untuk peralatan / kendaraan'
+                  : selectedFacility?.capacity != null
+                    ? `Maks. ${selectedFacility.capacity} orang`
+                    : undefined
               }
             >
               <Input
                 type="number"
                 name="participantCount"
-                value={participants}
+                value={participantsEnabled ? participants : ''}
                 onChange={(e) => setParticipants(e.target.value)}
                 min={0}
                 max={selectedFacility?.capacity ?? undefined}
                 placeholder="0"
+                disabled={!participantsEnabled}
               />
               {selectedFacility?.capacity != null &&
                 participants !== '' &&
@@ -295,7 +656,8 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
           >
             <Textarea
               name="additionalNeeds"
-              defaultValue={initial?.additionalNeeds ?? ''}
+              value={additionalNeeds}
+              onChange={(e) => setAdditionalNeeds(e.target.value)}
               rows={2}
               placeholder="Tuliskan kebutuhan tambahan untuk acara…"
             />
@@ -324,17 +686,29 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
               />
             </Field>
             <Field label="NIM / NIDN / ID" error={errs.identityNumber}>
-              <Input name="identityNumber" defaultValue={initial?.identityNumber ?? ''} placeholder="2021xxxxxxx" />
+              <Input
+                name="identityNumber"
+                value={identityNumber}
+                onChange={(e) => setIdentityNumber(e.target.value)}
+                placeholder="2021xxxxxxx"
+              />
             </Field>
             <Field label="No HP" error={errs.phone} required>
-              <Input name="phone" defaultValue={initial?.phone ?? ''} required placeholder="08xxxxxxxxxx" />
+              <Input
+                name="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                placeholder="08xxxxxxxxxx"
+              />
             </Field>
             <div className="sm:col-span-2">
               <Field label="Email" error={errs.email} required>
                 <Input
                   type="email"
                   name="email"
-                  defaultValue={initial?.email ?? ''}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="nama@students.ukdw.ac.id"
                   required
                 />
@@ -343,7 +717,24 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
           </div>
         </Section>
 
-        {state?.error && (
+        {clientError && (
+          <div className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-900">{clientError}</p>
+          </div>
+        )}
+
+        {state && !('ok' in state) && state.fieldErrors && Object.keys(state.fieldErrors).length > 0 && (
+          <div className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-900">Beberapa isian belum valid:</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-amber-800">
+              {fieldErrorSummary(state.fieldErrors).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {state && !('ok' in state) && state.error && (
           <div className="rounded-[var(--radius-md)] border border-rose-200 bg-rose-50 p-4">
             <p className="text-sm font-medium text-rose-800">{state.error}</p>
             {state.alternatives && state.alternatives.length > 0 && (
@@ -364,18 +755,14 @@ export function RequestForm({ mode, lockedFacility, facilities, initial }: Props
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Batal
           </Button>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={doCheck}
-              disabled={checking || !facilityId || !start || !end}
-            >
-              <Search size={14} />
-              {checking ? 'Mengecek…' : 'Cek Ketersediaan'}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? 'Mengirim…' : mode === 'create' ? 'Ajukan Peminjaman' : 'Submit Ulang Revisi'}
+          <div className="flex flex-wrap items-center gap-3">
+            {checking && (
+              <span className="text-[11.5px] font-medium text-[var(--neutral-500)]">
+                Mengecek ketersediaan…
+              </span>
+            )}
+            <Button type="submit" disabled={submitting || !assetsReady}>
+              {submitting ? 'Mengirim…' : mode === 'create' ? 'Ajukan Peminjaman' : 'Submit Ulang Revisi'}
             </Button>
           </div>
         </div>
@@ -464,15 +851,20 @@ function Section({
   title,
   description,
   children,
+  'data-field': dataField,
 }: {
   icon: React.ReactNode;
   eyebrow: string;
   title: string;
   description?: string;
   children: React.ReactNode;
+  'data-field'?: string;
 }) {
   return (
-    <section className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-xs)]">
+    <section
+      data-field={dataField}
+      className="rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-xs)]"
+    >
       <header className="flex items-start gap-3 border-b border-[var(--neutral-100)] px-5 py-4">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary-50)] text-[var(--primary-700)] ring-1 ring-[var(--primary-100)]">
           {icon}

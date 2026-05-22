@@ -5,6 +5,7 @@ import { ApproverRequestDetail } from '@/components/dashboard/ApproverRequestDet
 import { AdminUnitActions } from '@/components/dashboard/AdminUnitActions';
 import { AdminOverrideButton } from '@/components/dashboard/AdminOverrideButton';
 import { getAlternatives } from '@/lib/availability';
+import { fmtDateTimeInput } from '@/lib/request-code';
 import type { ApprovalLog, Facility, FacilityRequest, ManagingUnit } from '@/types';
 
 export default async function AdminUnitDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +39,14 @@ export default async function AdminUnitDetail({ params }: { params: Promise<{ id
     ? await getAlternatives(req.facilityId, new Date(req.startDateTime), new Date(req.endDateTime))
     : [];
   const allFacilities = isApproved
-    ? await query<Facility>('SELECT * FROM facilities WHERE isActive = 1 ORDER BY managingUnit, name')
+    ? bureau
+      ? await query<Facility>(
+          'SELECT * FROM facilities WHERE isActive = 1 AND managingUnit = ? ORDER BY category, name',
+          [bureau]
+        )
+      : await query<Facility>(
+          'SELECT * FROM facilities WHERE isActive = 1 ORDER BY managingUnit, name'
+        )
     : [];
 
   return (
@@ -58,7 +66,13 @@ export default async function AdminUnitDetail({ params }: { params: Promise<{ id
               Pengajuan sudah disetujui. Gunakan tombol di bawah hanya untuk keadaan mendesak —
               pengaju akan diminta menerima atau menolak penggantian.
             </p>
-            <AdminOverrideButton requestId={req.id} facilities={allFacilities} />
+            <AdminOverrideButton
+              requestId={req.id}
+              facilities={allFacilities}
+              defaultFacilityId={String(req.facilityId)}
+              defaultStart={fmtDateTimeInput(req.startDateTime)}
+              defaultEnd={fmtDateTimeInput(req.endDateTime)}
+            />
           </div>
         ) : req.status === 'OVERRIDE_OFFERED' ? (
           <p className="text-sm text-[var(--neutral-600)]">

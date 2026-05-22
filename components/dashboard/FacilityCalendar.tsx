@@ -10,7 +10,7 @@ import {
   type ManagingUnit,
   type RequestStatus,
 } from '@/types';
-import { Select } from '@/components/ui/Field';
+import { Field, Input, Select } from '@/components/ui/Field';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 
 const UNIT_ORDER: ManagingUnit[] = ['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'];
@@ -77,8 +77,7 @@ export function FacilityCalendar({
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Filter Fasilitas</label>
+          <Field label="Filter Fasilitas">
             <Select value={facId} onChange={(e) => setFacId(e.target.value)}>
               <option value="">Semua fasilitas</option>
               {UNIT_ORDER.map((unit) => {
@@ -95,16 +94,10 @@ export function FacilityCalendar({
                 );
               })}
             </Select>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Filter Tanggal</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
+          </Field>
+          <Field label="Filter Tanggal">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
         </div>
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
           <span className="inline-flex items-center gap-1.5">

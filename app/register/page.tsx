@@ -65,7 +65,7 @@ export default function RegisterPage() {
           }}
         />
 
-        <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/85 p-8 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.25),0_0_0_1px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+        <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/85 px-8 py-10 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.25),0_0_0_1px_rgba(15,23,42,0.04)] backdrop-blur-xl sm:px-9 sm:py-11">
           {/* Top gradient accent */}
           <div
             aria-hidden
@@ -88,36 +88,24 @@ export default function RegisterPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="relative mb-7 flex items-center gap-3"
+            className="relative mb-9"
           >
-            <div className="relative">
-              <div
-                aria-hidden
-                className="absolute -inset-1 rounded-2xl opacity-70 blur-md"
-                style={{ background: 'linear-gradient(135deg, var(--primary-500), var(--primary-800))' }}
-              />
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--primary-600)] to-[var(--primary-800)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_12px_rgba(26,122,60,0.35)]">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M20 8v6M23 11h-6" />
-                  <circle cx="9" cy="7" r="4" />
-                </svg>
-              </div>
-            </div>
-            <div>
-              <h1 className="flex items-center gap-1.5 text-[19px] font-bold tracking-tight text-[var(--neutral-900)]">
-                Daftar Pengurus LK/OK
-                <Sparkles size={13} className="text-[var(--primary-600)]" />
-              </h1>
-              <p className="text-[13px] text-[var(--neutral-500)]">
-                Akun aktif setelah disetujui Super Admin.
-              </p>
-            </div>
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--primary-700)]">
+              <Sparkles size={12} className="text-[var(--primary-600)]" />
+              Register
+            </p>
+            <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-[var(--neutral-900)]">
+              Daftar Pengurus
+            </h1>
+            <p className="mt-2.5 text-[14px] leading-relaxed text-[var(--neutral-500)]">
+              Buat akun LK/OK UKDW. Akun aktif setelah disetujui Super Admin.
+            </p>
           </motion.div>
 
-          <form action={action} className="relative grid gap-4 sm:grid-cols-2">
+          <form action={action} className="relative grid gap-5 sm:grid-cols-2">
             {[
               <Field key="name" label="Nama Lengkap" error={errs.name} required>
-                <Input name="name" required />
+                <Input name="name" required className="h-11 rounded-xl" />
               </Field>,
               <Field
                 key="email"
@@ -132,19 +120,20 @@ export default function RegisterPage() {
                   placeholder="nama@students.ukdw.ac.id"
                   required
                   autoComplete="email"
+                  className="h-11 rounded-xl"
                 />
               </Field>,
               <Field key="org" label="Nama Organisasi / LK / OK" error={errs.organizationName} required>
-                <Input name="organizationName" required />
+                <Input name="organizationName" required className="h-11 rounded-xl" />
               </Field>,
               <Field key="phone" label="Nomor HP" error={errs.phone} required>
-                <Input name="phone" required />
+                <Input name="phone" required className="h-11 rounded-xl" />
               </Field>,
               <Field key="pw" label="Password" error={errs.password} hint="Minimal 6 karakter" required>
-                <PasswordInput name="password" required autoComplete="new-password" />
+                <PasswordInput name="password" required autoComplete="new-password" className="h-11 rounded-xl" />
               </Field>,
               <Field key="cpw" label="Konfirmasi Password" error={errs.confirmPassword} required>
-                <PasswordInput name="confirmPassword" required autoComplete="new-password" />
+                <PasswordInput name="confirmPassword" required autoComplete="new-password" className="h-11 rounded-xl" />
               </Field>,
             ].map((node, i) => (
               <motion.div
@@ -164,7 +153,7 @@ export default function RegisterPage() {
               className="sm:col-span-2"
             >
               <Field label="NIM / NIDN / ID PIC (opsional)" error={errs.identityNumber}>
-                <Input name="identityNumber" />
+                <Input name="identityNumber" className="h-11 rounded-xl" />
               </Field>
             </motion.div>
 
@@ -187,12 +176,12 @@ export default function RegisterPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.32 }}
-              className="sm:col-span-2 pt-1"
+              className="sm:col-span-2 pt-2"
             >
               <button
                 type="submit"
                 disabled={pending}
-                className="group/btn relative inline-flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-br from-[var(--primary-700)] to-[var(--primary-900)] px-4 text-[14px] font-semibold text-white shadow-[0_4px_14px_rgba(26,122,60,0.35),inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:shadow-[0_8px_22px_rgba(26,122,60,0.45),inset_0_1px_0_rgba(255,255,255,0.22)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-70"
+                className="group/btn relative inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[var(--primary-700)] to-[var(--primary-900)] px-4 text-[15px] font-semibold text-white shadow-[0_6px_20px_rgba(26,122,60,0.38),inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:shadow-[0_10px_28px_rgba(26,122,60,0.45),inset_0_1px_0_rgba(255,255,255,0.22)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <span
                   aria-hidden
@@ -217,12 +206,12 @@ export default function RegisterPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.58, duration: 0.4 }}
-            className="relative mt-6 flex items-center gap-3"
+            className="relative mt-8 flex items-center gap-3"
           >
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[var(--neutral-200)]" />
             <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--neutral-500)]">
-              <ShieldCheck size={11} className="text-[var(--primary-600)]" />
-              Data Anda terlindungi
+              <ShieldCheck size={11} strokeWidth={2} className="text-[var(--primary-600)]" />
+              Koneksi aman & terenkripsi
             </span>
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--neutral-200)]" />
           </motion.div>
@@ -231,7 +220,7 @@ export default function RegisterPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.62, duration: 0.4 }}
-            className="mt-5 text-center text-sm text-[var(--neutral-600)]"
+            className="mt-6 text-center text-sm text-[var(--neutral-600)]"
           >
             Sudah punya akun?{' '}
             <Link

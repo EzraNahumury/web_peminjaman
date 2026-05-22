@@ -85,6 +85,24 @@ select {
   font-family: var(--font-sans);
 }
 
+/* Hilangkan panah default browser pada <select> — pakai ikon custom di komponen Select */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+select option {
+  color: var(--neutral-900);
+  background-color: var(--white);
+  padding: 0.5rem;
+}
+
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: var(--neutral-400);

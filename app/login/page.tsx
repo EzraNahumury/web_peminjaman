@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useActionState } from 'react';
+import { Suspense, useActionState, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -7,8 +7,6 @@ import { ArrowLeft, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 import { login, type FormState } from '@/app/actions/auth';
 import { Field, Input } from '@/components/ui/Field';
 import { PasswordInput } from '@/components/ui/PasswordInput';
-import { Button } from '@/components/ui/Button';
-
 function LoginForm() {
   const sp = useSearchParams();
   const registered = sp.get('registered');
@@ -16,12 +14,26 @@ function LoginForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(login, undefined);
   const errs = state?.fieldErrors ?? {};
 
+  // Field email & password dikontrol agar reset-nya bisa diatur sesuai jenis error:
+  // - password salah  → kosongkan password saja, email tetap.
+  // - email tidak ada → kosongkan keduanya.
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  useEffect(() => {
+    if (state?.reason === 'WRONG_PASSWORD') {
+      setPassword('');
+    } else if (state?.reason === 'EMAIL_NOT_FOUND') {
+      setEmail('');
+      setPassword('');
+    }
+  }, [state]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative w-full max-w-md"
+      className="relative w-full max-w-[400px]"
     >
       {/* Glow behind card */}
       <div
@@ -33,7 +45,7 @@ function LoginForm() {
         }}
       />
 
-      <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/85 p-8 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.25),0_0_0_1px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/85 px-8 py-10 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.25),0_0_0_1px_rgba(15,23,42,0.04)] backdrop-blur-xl sm:px-9 sm:py-11">
         {/* Top gradient accent */}
         <div
           aria-hidden
@@ -56,27 +68,18 @@ function LoginForm() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="relative mb-7 flex items-center gap-3"
+          className="relative mb-9"
         >
-          <div className="relative">
-            <div
-              aria-hidden
-              className="absolute -inset-1 rounded-2xl opacity-70 blur-md"
-              style={{ background: 'linear-gradient(135deg, var(--primary-500), var(--primary-800))' }}
-            />
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--primary-600)] to-[var(--primary-800)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_12px_rgba(26,122,60,0.35)]">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21V11M15 21V11" />
-              </svg>
-            </div>
-          </div>
-          <div>
-            <h1 className="flex items-center gap-1.5 text-[19px] font-bold tracking-tight text-[var(--neutral-900)]">
-              Masuk ke FASKO
-              <Sparkles size={13} className="text-[var(--primary-600)]" />
-            </h1>
-            <p className="text-[13px] text-[var(--neutral-500)]">Selamat datang kembali. Mari mulai.</p>
-          </div>
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--primary-700)]">
+            <Sparkles size={12} className="text-[var(--primary-600)]" />
+            Login
+          </p>
+          <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-[var(--neutral-900)]">
+            Selamat datang
+          </h1>
+          <p className="mt-2.5 text-[14px] leading-relaxed text-[var(--neutral-500)]">
+            Masuk dengan akun UKDW untuk mulai mengajukan peminjaman.
+          </p>
         </motion.div>
 
         {registered && (
@@ -99,14 +102,23 @@ function LoginForm() {
           </motion.div>
         )}
 
-        <form action={action} className="relative space-y-4">
+        <form action={action} className="relative space-y-5">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.35 }}
           >
             <Field label="Email" error={errs.email}>
-              <Input type="email" name="email" placeholder="nama@students.ukdw.ac.id" required autoComplete="email" />
+              <Input
+                type="email"
+                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nama@students.ukdw.ac.id"
+                required
+                autoComplete="email"
+                className="h-11 rounded-xl"
+              />
             </Field>
           </motion.div>
           <motion.div
@@ -115,8 +127,24 @@ function LoginForm() {
             transition={{ delay: 0.22, duration: 0.35 }}
           >
             <Field label="Password" error={errs.password}>
-              <PasswordInput name="password" placeholder="••••••••" required autoComplete="current-password" />
+              <PasswordInput
+                name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+                className="h-11 rounded-xl"
+              />
             </Field>
+            <div className="mt-1.5 flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-[12.5px] font-medium text-[var(--primary-700)] underline-offset-2 transition-colors hover:text-[var(--primary-800)] hover:underline"
+              >
+                Lupa password?
+              </Link>
+            </div>
           </motion.div>
 
           {state?.error && (
@@ -138,12 +166,12 @@ function LoginForm() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.35 }}
-            className="pt-1"
+            className="pt-2"
           >
             <button
               type="submit"
               disabled={pending}
-              className="group/btn relative inline-flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-br from-[var(--primary-700)] to-[var(--primary-900)] px-4 text-[14px] font-semibold text-white shadow-[0_4px_14px_rgba(26,122,60,0.35),inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:shadow-[0_8px_22px_rgba(26,122,60,0.45),inset_0_1px_0_rgba(255,255,255,0.22)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-70"
+              className="group/btn relative inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[var(--primary-700)] to-[var(--primary-900)] px-4 text-[15px] font-semibold text-white shadow-[0_6px_20px_rgba(26,122,60,0.38),inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:shadow-[0_10px_28px_rgba(26,122,60,0.45),inset_0_1px_0_rgba(255,255,255,0.22)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {/* Shine sweep */}
               <span
@@ -169,12 +197,12 @@ function LoginForm() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.4 }}
-          className="relative mt-6 flex items-center gap-3"
+          className="relative mt-8 flex items-center gap-3"
         >
           <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[var(--neutral-200)]" />
           <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--neutral-500)]">
             <ShieldCheck size={11} className="text-[var(--primary-600)]" />
-            Sesi aman & terenkripsi
+            Koneksi aman & terenkripsi
           </span>
           <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--neutral-200)]" />
         </motion.div>
@@ -183,7 +211,7 @@ function LoginForm() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.45, duration: 0.4 }}
-          className="mt-5 text-center text-sm text-[var(--neutral-600)]"
+          className="mt-6 text-center text-sm text-[var(--neutral-600)]"
         >
           Belum punya akun?{' '}
           <Link

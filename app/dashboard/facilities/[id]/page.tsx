@@ -2,45 +2,23 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   Building2,
-  DoorOpen,
-  FlaskConical,
-  Layers,
   MapPin,
-  Mic2,
-  Monitor,
-  Trophy,
   Users as UsersIcon,
-  Wrench,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
   Tag,
   Info,
+  Layers,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { query, queryOne } from '@/lib/db';
 import { formatWIBDate, formatWIBTime } from '@/utils/date';
+import { getFacilityIcon } from '@/lib/facility-icons';
 import { MANAGING_UNIT_LABEL, type Facility, type FacilityRequest, type RequestStatus } from '@/types';
 import { FacilityAvailabilityCalendar, type DayBooking } from '@/components/dashboard/FacilityAvailabilityCalendar';
-
-const CATEGORY_ICON: Record<string, LucideIcon> = {
-  Aula: Building2,
-  Auditorium: Building2,
-  Ruangan: DoorOpen,
-  'Ruang Kelas': DoorOpen,
-  'Ruang Tutorial': DoorOpen,
-  Laboratorium: FlaskConical,
-  Studio: Mic2,
-  Peralatan: Wrench,
-  Lapangan: Trophy,
-  Kendaraan: Wrench,
-  'Sound System': Mic2,
-  Proyektor: Monitor,
-  Multimedia: Monitor,
-};
 
 export default async function FacilityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -82,7 +60,7 @@ export default async function FacilityDetailPage({ params }: { params: Promise<{
     status: b.status as RequestStatus,
   }));
 
-  const Icon = CATEGORY_ICON[facility.category] ?? Layers;
+  const Icon = getFacilityIcon(facility);
   const isPengurus = user.role === 'PENGURUS';
 
   return (

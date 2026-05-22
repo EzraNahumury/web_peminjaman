@@ -44,3 +44,6 @@ export const PRIORITY_ORDER_SQL = `
   END + ${AGING_RATE} * TIMESTAMPDIFF(HOUR, fr.submittedAt, NOW())) DESC,
   fr.submittedAt ASC
 `;
+
+/** Urutan tabel daftar pengajuan: yang baru masuk tampil paling atas. */
+export const REQUEST_LIST_ORDER_SQL = 'COALESCE(fr.submittedAt, fr.createdAt) DESC, fr.id DESC';

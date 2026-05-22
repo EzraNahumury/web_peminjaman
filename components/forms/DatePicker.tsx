@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
+import { FloatingPanel } from '@/components/ui/FloatingPanel';
 
 const ID_MONTHS = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -8,6 +9,22 @@ const ID_MONTHS = [
 ];
 const ID_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 const ID_DAYS_SHORT = ['Mn', 'Sn', 'Sl', 'Rb', 'Km', 'Jm', 'Sb'];
+
+const HOLIDAYS_ID: Record<string, string> = {
+  '2026-01-01': 'Tahun Baru Masehi',
+  '2026-02-17': 'Tahun Baru Imlek',
+  '2026-03-19': 'Hari Suci Nyepi',
+  '2026-04-03': 'Wafat Isa Al Masih',
+  '2026-04-10': 'Hari Raya Idul Fitri',
+  '2026-04-11': 'Hari Raya Idul Fitri',
+  '2026-05-01': 'Hari Buruh Internasional',
+  '2026-05-14': 'Kenaikan Isa Al Masih',
+  '2026-05-31': 'Hari Raya Waisak',
+  '2026-06-01': 'Hari Lahir Pancasila',
+  '2026-06-17': 'Hari Raya Idul Adha',
+  '2026-08-17': 'Hari Kemerdekaan RI',
+  '2026-12-25': 'Hari Raya Natal',
+};
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -34,12 +51,21 @@ export function DatePicker({
   min,
   placeholder = 'Pilih tanggal',
   variant = 'default',
+  popoverAlign = 'start',
+  dayMarkers,
+  inline = false,
 }: {
   value: string; // yyyy-mm-dd
   onChange: (v: string) => void;
   min?: string;
   placeholder?: string;
   variant?: 'default' | 'ghost';
+  /** Penjajaran popup kalender (end = buka ke kiri, untuk filter di pojok kanan) */
+  popoverAlign?: 'start' | 'end';
+  /** Tanggal yang sudah terisi: yyyy-mm-dd → 'booking' (ada peminjaman) | 'block' (diblokir admin) */
+  dayMarkers?: Record<string, 'booking' | 'block'>;
+  /** Render popup inline (di dalam Dialog/modal). */
+  inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -63,23 +89,6 @@ export function DatePicker({
       setCursor({ year: selectedDate.getFullYear(), month: selectedDate.getMonth() });
     }
   }, [selectedDate]);
-
-  // Click outside & escape
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
 
   const { year, month } = cursor;
   const firstDay = new Date(year, month, 1);
@@ -204,8 +213,16 @@ export function DatePicker({
         )}
       </button>
 
-      {open && (
-        <div className="absolute z-40 mt-1 w-[300px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-lg,0_10px_25px_-5px_rgba(0,0,0,0.18))]">
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={wrapRef}
+        fixedWidth={320}
+        align={popoverAlign}
+        inline={inline}
+        className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white shadow-[var(--shadow-lg,0_10px_25px_-5px_rgba(0,0,0,0.18))]"
+      >
+        <div className="w-full">
           {/* Header */}
           <div className="flex items-center justify-between gap-2 border-b border-[var(--neutral-100)] bg-gradient-to-br from-[var(--primary-50)] to-white px-3 py-2.5">
             <div className="flex items-center gap-1">
@@ -252,7 +269,7 @@ export function DatePicker({
           </div>
 
           {/* Day labels */}
-          <div className="grid grid-cols-7 gap-0.5 px-2 pt-2">
+          <div className="grid grid-cols-7 gap-0.5 px-3 pt-2">
             {ID_DAYS_SHORT.map((d, i) => (
               <span
                 key={d}
@@ -264,21 +281,30 @@ export function DatePicker({
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-7 gap-0.5 px-2 pb-2">
+          <div className="grid grid-cols-7 gap-0.5 px-3 pb-2">
             {cells.map((c, i) => {
+              const iso = toISODate(c.date);
               const isSelected = selectedDate && sameDay(c.date, selectedDate);
               const isToday = sameDay(c.date, today);
               const isSunday = c.date.getDay() === 0;
+              const marker = !c.disabled ? dayMarkers?.[iso] : undefined;
+              const holidayName = HOLIDAYS_ID[iso];
+              const isHoliday = !!holidayName;
               let cls =
-                'flex h-9 w-full items-center justify-center rounded-[var(--radius-sm)] text-[12px] tabular-nums transition-all';
+                'relative flex h-9 w-full items-center justify-center rounded-[var(--radius-sm)] text-[12px] tabular-nums transition-all';
               if (c.disabled) cls += ' cursor-not-allowed text-[var(--neutral-300)]';
               else if (isSelected)
-                cls += ' bg-[var(--primary-700)] text-white font-semibold shadow-[var(--shadow-sm)] hover:bg-[var(--primary-800)]';
+                cls += ' bg-[var(--primary-700)] text-white font-semibold shadow-[var(--shadow-sm)] ring-2 ring-[var(--primary-300)] hover:bg-[var(--primary-800)]';
               else if (isToday)
-                cls += ' bg-[var(--primary-100)] text-[var(--primary-900)] font-semibold ring-1 ring-[var(--primary-200)] hover:bg-[var(--primary-200)]';
+                cls += ' bg-[var(--primary-700)] text-white font-semibold shadow-[var(--shadow-sm)] hover:bg-[var(--primary-800)]';
+              else if (marker)
+                cls += ` bg-rose-50 ring-1 ring-rose-100 hover:bg-rose-100 ${isHoliday || isSunday ? 'text-rose-600' : 'text-rose-900'}`;
               else if (!c.inMonth) cls += ' text-[var(--neutral-300)] hover:bg-[var(--neutral-50)]';
-              else if (isSunday) cls += ' text-rose-500 hover:bg-rose-50 hover:text-rose-700';
+              else if (isHoliday || isSunday) cls += ' text-rose-500 hover:bg-rose-50 hover:text-rose-700';
               else cls += ' text-[var(--neutral-700)] hover:bg-[var(--primary-50)] hover:text-[var(--primary-900)]';
+
+              const showBookingDot = !!marker && !isSelected && !isToday;
+              const showHolidayDot = isHoliday && !marker && !isSelected && !isToday;
               return (
                 <button
                   key={i}
@@ -286,12 +312,42 @@ export function DatePicker({
                   disabled={c.disabled}
                   onClick={() => !c.disabled && pick(c.date)}
                   className={cls}
+                  title={
+                    marker === 'block'
+                      ? 'Diblokir admin pada tanggal ini'
+                      : marker === 'booking'
+                        ? 'Sudah ada peminjaman pada tanggal ini'
+                        : holidayName
+                  }
                 >
                   {c.date.getDate()}
+                  {showBookingDot && (
+                    <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-rose-500" />
+                  )}
+                  {showHolidayDot && (
+                    <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-rose-400" />
+                  )}
                 </button>
               );
             })}
           </div>
+
+          {dayMarkers && (
+            <div className="flex items-center justify-between border-t border-[var(--neutral-100)] px-4 py-2 text-[10px] text-[var(--neutral-600)]">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-rose-300" />
+                Terisi
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-rose-500" />
+                Hari libur
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[var(--primary-700)]" />
+                Hari ini
+              </span>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between gap-2 border-t border-[var(--neutral-100)] bg-[var(--neutral-50)] px-3 py-2 text-[11px]">
@@ -311,7 +367,7 @@ export function DatePicker({
             </button>
           </div>
         </div>
-      )}
+      </FloatingPanel>
     </div>
   );
 }

@@ -10,11 +10,19 @@ import type { FacilityBlock, ManagingUnit } from '@/types';
 const BlockSchema = z
   .object({
     facilityId: z.string().optional(),
-    startDateTime: z.string().min(1),
-    endDateTime: z.string().min(1),
+    startDateTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Tanggal/jam mulai tidak valid',
+    }),
+    endDateTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Tanggal/jam selesai tidak valid',
+    }),
     reason: z.string().trim().min(3, 'Alasan minimal 3 karakter'),
   })
-  .refine((d) => new Date(d.endDateTime) > new Date(d.startDateTime), {
+  .refine((d) => {
+    const s = new Date(d.startDateTime);
+    const e = new Date(d.endDateTime);
+    return !isNaN(s.getTime()) && !isNaN(e.getTime()) && e > s;
+  }, {
     message: 'Tanggal/jam selesai harus setelah mulai',
     path: ['endDateTime'],
   });
@@ -101,7 +109,7 @@ export async function getBlocks(bureau?: ManagingUnit | null) {
        JOIN facilities f ON f.id = b.facilityId
        LEFT JOIN users u ON u.id = b.createdBy
        WHERE f.managingUnit = ?
-       ORDER BY b.startDateTime DESC`,
+       ORDER BY b.createdAt DESC, b.id DESC`,
       [bureau]
     );
   }
@@ -110,6 +118,6 @@ export async function getBlocks(bureau?: ManagingUnit | null) {
      FROM facility_blocks b
      LEFT JOIN facilities f ON f.id = b.facilityId
      LEFT JOIN users u ON u.id = b.createdBy
-     ORDER BY b.startDateTime DESC`
+     ORDER BY b.createdAt DESC, b.id DESC`
   );
 }

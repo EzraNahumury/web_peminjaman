@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { Mail, Phone, IdCard, ShieldCheck, UserRound, KeyRound, ImageIcon, PenTool } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, CheckCircle2, Mail, Phone, IdCard, ShieldCheck, UserRound, KeyRound, ImageIcon, PenTool } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 import {
   LogoUploadForm,
@@ -18,9 +19,21 @@ const ROLE_LABEL: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
 };
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ return?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  // URL kembali (mis. dari form peminjaman). Hanya path internal yang diizinkan.
+  const sp = await searchParams;
+  const returnTo =
+    sp.return && sp.return.startsWith('/dashboard/') && !sp.return.includes('//')
+      ? sp.return
+      : null;
+  const assetsComplete = Boolean(user.organizationLogoUrl) && Boolean(user.signatureUrl);
 
   const initials = user.name
     .split(' ')
@@ -31,6 +44,38 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-6">
+      {/* Panah kembali ke form peminjaman (alur pengguna baru) */}
+      {returnTo && (
+        <Link
+          href={returnTo}
+          className={
+            assetsComplete
+              ? 'group flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--primary-200)] bg-[var(--primary-50)] px-4 py-3 shadow-[var(--shadow-xs)] transition-colors hover:bg-[var(--primary-100)]/60'
+              : 'group flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--neutral-200)] bg-white px-4 py-3 shadow-[var(--shadow-xs)] transition-colors hover:border-[var(--neutral-300)]'
+          }
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[var(--primary-700)] ring-1 ring-[var(--primary-100)] transition-transform group-hover:-translate-x-0.5">
+            <ArrowLeft size={16} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-[var(--neutral-900)]">
+              Kembali ke form peminjaman
+            </p>
+            <p className="mt-0.5 text-[11.5px] text-[var(--neutral-500)]">
+              {assetsComplete
+                ? 'Logo & tanda tangan sudah lengkap — klik untuk melanjutkan pengajuan.'
+                : 'Unggah logo organisasi & tanda tangan di bawah, lalu kembali untuk melanjutkan.'}
+            </p>
+          </div>
+          {assetsComplete && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--primary-100)] px-2 py-0.5 text-[11px] font-semibold text-[var(--primary-800)]">
+              <CheckCircle2 size={12} />
+              Lengkap
+            </span>
+          )}
+        </Link>
+      )}
+
       {/* Hero card */}
       <section
         className="relative overflow-hidden rounded-[var(--radius-lg)] text-white shadow-[var(--shadow-md)]"
@@ -126,11 +171,8 @@ export default async function ProfilePage() {
         </Section>
       )}
 
-      {/* Section 04 — Tanda Tangan (semua role yang menandatangani surat) */}
-      {(user.role === 'PENGURUS' ||
-        user.role === 'BIRO_III' ||
-        user.role === 'WR3_WD3' ||
-        user.role === 'ADMIN_UNIT') && (
+      {/* Section 04 — Tanda Tangan (Pengurus, Biro III & WR3/WD3) */}
+      {(user.role === 'PENGURUS' || user.role === 'BIRO_III' || user.role === 'WR3_WD3') && (
         <Section
           icon={<PenTool size={15} />}
           eyebrow={user.role === 'PENGURUS' ? '04 · Tanda Tangan' : '03 · Tanda Tangan'}

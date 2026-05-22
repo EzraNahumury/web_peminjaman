@@ -1,8 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronRight, User } from 'lucide-react';
-import type { Role } from '@/types';
+import { Bell, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/cn';
 
 const SEGMENT_LABEL: Record<string, string> = {
   dashboard: 'FASKO',
@@ -38,7 +38,7 @@ function buildBreadcrumb(path: string): { label: string; href: string | null }[]
   return crumbs;
 }
 
-export function Navbar({ unread }: { role: Role; unread: number }) {
+export function Navbar({ unread }: { unread: number }) {
   const path = usePathname() || '/';
   const crumbs = buildBreadcrumb(path);
 
@@ -59,27 +59,24 @@ export function Navbar({ unread }: { role: Role; unread: number }) {
         ))}
       </nav>
 
-      <div className="flex items-center gap-2">
-        <Link
-          href="/dashboard/notifications"
-          className="relative inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)]"
-          aria-label="Notifikasi"
-          title="Notifikasi"
-        >
-          <Bell className="h-4 w-4" />
-          {unread > 0 && (
-            <span className="absolute -right-1 -top-1 inline-flex h-2.5 w-2.5 rounded-full bg-[var(--status-rejected-fg)] ring-2 ring-white" />
-          )}
-        </Link>
-        <Link
-          href="/dashboard/profile"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-[var(--neutral-200)] bg-white text-[var(--neutral-700)] transition-colors hover:border-[var(--neutral-300)] hover:bg-[var(--neutral-50)]"
-          aria-label="Profil"
-          title="Profil"
-        >
-          <User className="h-4 w-4" />
-        </Link>
-      </div>
+      <Link
+        href="/dashboard/notifications"
+        className={cn(
+          'relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all',
+          unread > 0
+            ? 'bg-[var(--primary-700)] text-white shadow-[0_4px_14px_-4px_rgba(6,48,26,0.45)] hover:bg-[var(--primary-800)]'
+            : 'bg-[var(--primary-50)] text-[var(--primary-800)] ring-1 ring-[var(--primary-200)] hover:bg-[var(--primary-100)] hover:ring-[var(--primary-300)]'
+        )}
+        aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : 'Notifikasi'}
+        title="Notifikasi"
+      >
+        <Bell className="h-5 w-5" strokeWidth={2.25} />
+        {unread > 0 && (
+          <span className="absolute -right-1 -top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold tabular-nums text-[var(--primary-800)] shadow-sm ring-1 ring-[var(--primary-200)]">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+      </Link>
     </header>
   );
 }

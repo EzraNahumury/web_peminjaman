@@ -2,14 +2,22 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { queryOne } from '@/lib/db';
-import { generateSuratNumber, fmtSuratDateRange, fmtSuratLongDate } from '@/lib/surat';
+import { getSession } from '@/lib/session';
+import { canViewSuratPage, generateSuratNumber, fmtSuratDateRange, fmtSuratLongDate, suratBackHref } from '@/lib/surat';
 import { PrintButton } from './PrintButton';
 import { MANAGING_UNIT_HEAD, type ManagingUnit, type FacilityRequest } from '@/types';
 
 export default async function SuratPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  const [session, user] = await Promise.all([getSession(), getCurrentUser()]);
+  if (!session?.userId || !user) redirect('/login');
+
+  const viewer = {
+    id: user.id,
+    role: session.role,
+    userScope: session.userScope ?? user.userScope,
+    bureauScope: session.bureauScope ?? user.bureauScope,
+  };
 
   const req = await queryOne<
     FacilityRequest & {
@@ -40,12 +48,11 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
   );
   if (!req) notFound();
 
-  if (user.role === 'PENGURUS' && req.userId !== user.id) {
-    redirect('/dashboard');
+  if (!canViewSuratPage(viewer, req)) {
+    redirect(suratBackHref(viewer.role, req.id));
   }
-  if (req.status !== 'APPROVED' && req.status !== 'WAITING_ADMIN_UNIT') {
-    redirect(`/dashboard/pengurus/requests/${req.id}`);
-  }
+
+  const backHref = suratBackHref(viewer.role, req.id);
 
   const biroIII = await queryOne<{ name: string; identityNumber: string | null; signatureUrl: string | null }>(
     `SELECT u.name, u.identityNumber, u.signatureUrl FROM approval_logs al
@@ -72,7 +79,7 @@ export default async function SuratPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="surat-page">
       <div className="surat-toolbar">
-        <Link href={`/dashboard/pengurus/requests/${req.id}`} className="surat-btn-secondary">← Kembali</Link>
+        <Link href={backHref} className="surat-btn-secondary">← Kembali</Link>
         <PrintButton />
       </div>
 

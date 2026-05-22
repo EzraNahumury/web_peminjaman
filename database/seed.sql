@@ -69,8 +69,8 @@ INSERT INTO facilities (name, category, managingUnit, location, capacity, descri
  ('Lab Komputer I','Laboratorium','PPLK','Gedung Lab',30,'Lab komputer I'),
  -- KRT
  ('Auditorium Koinonia','Auditorium','KRT','Gedung Koinonia',500,'Auditorium utama kampus'),
- ('Ruang Rudi Budiman','Ruangan','KRT','Gedung Utama',80,'Ruangan serbaguna Rudi Budiman'),
- ('Ruang Harun','Ruangan','KRT','Gedung Utama',80,'Ruangan serbaguna Harun'),
+ ('Ruang Rudi Budiman','Ruang Seminar','KRT','Gedung Utama',80,'Ruang seminar Rudi Budiman'),
+ ('Ruang Harun','Ruang Seminar','KRT','Gedung Utama',80,'Ruang seminar Harun'),
  ('Kendaraan','Kendaraan','KRT','Pool Kendaraan KRT',NULL,'Kendaraan operasional kampus'),
  ('Sound System','Peralatan','KRT','Inventaris KRT',NULL,'Sound system untuk acara besar'),
  ('Layar Viewer Proyektor','Peralatan','KRT','Inventaris KRT',NULL,'Layar untuk proyektor'),

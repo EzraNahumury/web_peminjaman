@@ -5,8 +5,9 @@ import { execute, queryOne, query } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { createNotification, createNotificationForRole } from '@/lib/notifications';
 import { findBlocks, findOverlap } from '@/lib/availability';
-import { PRIORITY_ORDER_SQL } from '@/utils/priority';
+import { REQUEST_LIST_ORDER_SQL } from '@/utils/priority';
 import { toMysqlDateTime } from '@/lib/request-code';
+import { validatedSuratPath } from '@/lib/surat';
 import type { FacilityRequest, RequestStatus } from '@/types';
 
 type LoadedRequest = FacilityRequest & { facilityName: string; managingUnit: string };
@@ -118,23 +119,30 @@ export async function approveByWR3WD3(requestId: number, note: string | null) {
   const req = await loadRequest(requestId);
   if (!req) return { error: 'Pengajuan tidak ditemukan' };
   if (req.status !== 'WAITING_WR3_WD3') return { error: 'Status tidak valid' };
-  await execute('UPDATE facility_requests SET status = ?, currentStep = ? WHERE id = ?', ['WAITING_ADMIN_UNIT', 'ADMIN_UNIT', requestId]);
+  const suratPath = validatedSuratPath(requestId);
+  await execute(
+    'UPDATE facility_requests SET status = ?, currentStep = ?, signedLetterUrl = ? WHERE id = ?',
+    ['WAITING_ADMIN_UNIT', 'ADMIN_UNIT', suratPath, requestId]
+  );
   await execute(
     'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
     [requestId, session.userId, 'APPROVE_WR3_WD3', 'WAITING_WR3_WD3', 'WAITING_ADMIN_UNIT', note]
   );
   await notifyAdminByBureau(
     req.managingUnit,
-    'Pengajuan menunggu review akhir',
-    `${facilityLabel(req)} — ${req.activityName} (${req.organizationName})`,
+    'Surat tervalidasi siap ditinjau',
+    `${facilityLabel(req)} — ${req.activityName} (${req.organizationName}). Surat digital WR3/WD3 sudah tersedia untuk review akhir.`,
     `/dashboard/admin-unit/requests/${requestId}`
   );
   await notifyOwner(
     req,
-    'Pengajuan disetujui oleh Biro III dan WR3/WD3',
-    `Peminjaman ${facilityLabel(req)} telah disetujui. Silakan upload surat yang sudah divalidasi pada halaman detail pengajuan untuk diteruskan ke Admin Unit.`
+    'Pengajuan disetujui WR3/WD3',
+    `Peminjaman ${facilityLabel(req)} telah divalidasi WR3/WD3. Surat otomatis diteruskan ke Admin Unit untuk review akhir. Anda dapat melihat surat pada halaman detail.`
   );
   revalidatePath(`/dashboard/wr3-wd3/requests/${requestId}`);
+  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
+  revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
+  revalidatePath(`/surat/${requestId}`);
   return { ok: true };
 }
 
@@ -350,70 +358,75 @@ export async function adminOverrideApproved(
     reason: string;
   }
 ) {
-  const session = await requireRole('ADMIN_UNIT');
-  const req = await loadRequest(requestId);
-  if (!req) return { error: 'Pengajuan tidak ditemukan' };
-  if (req.status !== 'APPROVED') return { error: 'Override hanya untuk pengajuan yang sudah APPROVED' };
+  try {
+    const session = await requireRole('ADMIN_UNIT');
+    const req = await loadRequest(requestId);
+    if (!req) return { error: 'Pengajuan tidak ditemukan' };
+    if (req.status !== 'APPROVED') return { error: 'Override hanya untuk pengajuan yang sudah APPROVED' };
 
-  const reasonTrim = params.reason.trim();
-  if (reasonTrim.length < 3) return { error: 'Alasan urgensi wajib diisi (min 3 karakter)' };
+    const reasonTrim = params.reason.trim();
+    if (reasonTrim.length < 3) return { error: 'Alasan urgensi wajib diisi (min 3 karakter)' };
 
-  const altFacility = await queryOne<{ id: number; name: string }>(
-    'SELECT id, name FROM facilities WHERE id = ? AND isActive = 1',
-    [params.proposedFacilityId]
-  );
-  if (!altFacility) return { error: 'Fasilitas pengganti tidak ditemukan' };
+    const altFacility = await queryOne<{ id: number; name: string }>(
+      'SELECT id, name FROM facilities WHERE id = ? AND isActive = 1',
+      [params.proposedFacilityId]
+    );
+    if (!altFacility) return { error: 'Fasilitas pengganti tidak ditemukan' };
 
-  const altStart = new Date(params.proposedStart);
-  const altEnd = new Date(params.proposedEnd);
-  if (Number.isNaN(altStart.getTime()) || Number.isNaN(altEnd.getTime()) || altEnd <= altStart) {
-    return { error: 'Jadwal pengganti tidak valid' };
+    const altStart = new Date(params.proposedStart);
+    const altEnd = new Date(params.proposedEnd);
+    if (Number.isNaN(altStart.getTime()) || Number.isNaN(altEnd.getTime()) || altEnd <= altStart) {
+      return { error: 'Jadwal pengganti tidak valid' };
+    }
+
+    const [overlaps, blocks] = await Promise.all([
+      findOverlap(params.proposedFacilityId, altStart, altEnd, requestId),
+      findBlocks(params.proposedFacilityId, altStart, altEnd),
+    ]);
+    if (blocks.length > 0) return { error: `Fasilitas pengganti diblokir admin: ${blocks[0].reason}` };
+    if (overlaps.length > 0) return { error: 'Jadwal pengganti bentrok dengan booking lain' };
+
+    await execute(
+      "UPDATE facility_bookings SET status = 'CANCELLED' WHERE requestId = ?",
+      [requestId]
+    );
+
+    await execute(
+      `UPDATE facility_requests SET
+         status = 'OVERRIDE_OFFERED',
+         proposedFacilityId = ?,
+         proposedStartDateTime = ?,
+         proposedEndDateTime = ?,
+         overrideReason = ?
+       WHERE id = ?`,
+      [params.proposedFacilityId, toMysqlDateTime(altStart), toMysqlDateTime(altEnd), reasonTrim, requestId]
+    );
+
+    const noteParts: string[] = [
+      `Admin Unit meminta perpindahan: ${altFacility.name}`,
+      `Jadwal baru: ${toMysqlDateTime(altStart)} – ${toMysqlDateTime(altEnd)}`,
+      `Alasan: ${reasonTrim}`,
+    ];
+    const finalNote = noteParts.join('\n');
+
+    await execute(
+      'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
+      [requestId, session.userId, 'ADMIN_OVERRIDE', 'APPROVED', 'OVERRIDE_OFFERED', finalNote]
+    );
+
+    await notifyOwner(
+      req,
+      'Admin minta perpindahan ruangan',
+      `Peminjaman ${facilityLabel(req)} dialihkan karena keperluan mendesak. Admin menawarkan ${altFacility.name}. Buka detail pengajuan untuk menerima atau menolak.`
+    );
+
+    revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
+    revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
+    return { ok: true };
+  } catch (error: any) {
+    console.error('Error in adminOverrideApproved server action:', error);
+    return { error: error?.message || 'Terjadi kesalahan internal server' };
   }
-
-  const [overlaps, blocks] = await Promise.all([
-    findOverlap(params.proposedFacilityId, altStart, altEnd, requestId),
-    findBlocks(params.proposedFacilityId, altStart, altEnd),
-  ]);
-  if (blocks.length > 0) return { error: `Fasilitas pengganti diblokir admin: ${blocks[0].reason}` };
-  if (overlaps.length > 0) return { error: 'Jadwal pengganti bentrok dengan booking lain' };
-
-  await execute(
-    "UPDATE facility_bookings SET status = 'CANCELLED' WHERE requestId = ?",
-    [requestId]
-  );
-
-  await execute(
-    `UPDATE facility_requests SET
-       status = 'OVERRIDE_OFFERED',
-       proposedFacilityId = ?,
-       proposedStartDateTime = ?,
-       proposedEndDateTime = ?,
-       overrideReason = ?
-     WHERE id = ?`,
-    [params.proposedFacilityId, toMysqlDateTime(altStart), toMysqlDateTime(altEnd), reasonTrim, requestId]
-  );
-
-  const noteParts: string[] = [
-    `Admin Unit meminta perpindahan: ${altFacility.name}`,
-    `Jadwal baru: ${toMysqlDateTime(altStart)} – ${toMysqlDateTime(altEnd)}`,
-    `Alasan: ${reasonTrim}`,
-  ];
-  const finalNote = noteParts.join('\n');
-
-  await execute(
-    'INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note) VALUES (?,?,?,?,?,?)',
-    [requestId, session.userId, 'ADMIN_OVERRIDE', 'APPROVED', 'OVERRIDE_OFFERED', finalNote]
-  );
-
-  await notifyOwner(
-    req,
-    'Admin minta perpindahan ruangan',
-    `Peminjaman ${facilityLabel(req)} dialihkan karena keperluan mendesak. Admin menawarkan ${altFacility.name}. Buka detail pengajuan untuk menerima atau menolak.`
-  );
-
-  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
-  revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
-  return { ok: true };
 }
 
 export async function acceptOverride(requestId: number) {
@@ -556,7 +569,7 @@ export async function getRequestsForRole(
      JOIN facilities f ON f.id = fr.facilityId
      JOIN users u ON u.id = fr.userId
      WHERE ${whereSql}
-     ORDER BY ${PRIORITY_ORDER_SQL}
+     ORDER BY ${REQUEST_LIST_ORDER_SQL}
      LIMIT ${pageSize} OFFSET ${offset}`,
     params
   );

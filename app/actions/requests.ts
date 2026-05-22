@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { execute, query, queryOne } from '@/lib/db';
 import { requireRole, verifySession } from '@/lib/auth';
@@ -8,11 +7,57 @@ import { findBlocks, findOverlap, getAlternatives, isAvailable } from '@/lib/ava
 import { createNotificationForBureau, createNotificationForRole } from '@/lib/notifications';
 import { FacilityRequestSchema } from '@/lib/validations';
 import { generateRequestCode, toMysqlDateTime } from '@/lib/request-code';
+import { isSystemValidatedSurat } from '@/lib/surat';
+import { REQUEST_LIST_ORDER_SQL } from '@/utils/priority';
 import type { Facility, FacilityRequest } from '@/types';
 
 export type RequestFormState =
   | { error?: string; fieldErrors?: Record<string, string[]>; alternatives?: Facility[] }
+  | { ok: true; requestId: number }
   | undefined;
+
+/** Payload serializable dari client (FormData manual tidak terkirim ke server action). */
+export type RequestFormPayload = {
+  facilityId: string | number;
+  activityName: string;
+  organizationName: string;
+  personInCharge: string;
+  identityNumber?: string;
+  email: string;
+  phone: string;
+  startDateTime: string;
+  endDateTime: string;
+  participantCount?: string | number;
+  purpose: string;
+  description?: string;
+  activityScope?: string;
+  activityLevel?: string;
+  additionalNeeds?: string;
+  attachmentUrl?: string;
+  notes?: string;
+};
+
+function parseRequestPayload(input: RequestFormPayload) {
+  return {
+    facilityId: input.facilityId,
+    activityName: input.activityName,
+    organizationName: input.organizationName,
+    personInCharge: input.personInCharge,
+    identityNumber: input.identityNumber ?? '',
+    email: input.email,
+    phone: input.phone,
+    startDateTime: input.startDateTime,
+    endDateTime: input.endDateTime,
+    participantCount: input.participantCount ?? undefined,
+    purpose: input.purpose,
+    description: input.description,
+    activityScope: input.activityScope || 'UNIVERSITAS',
+    activityLevel: input.activityLevel || 'KEMAHASISWAAN',
+    additionalNeeds: input.additionalNeeds,
+    attachmentUrl: input.attachmentUrl,
+    notes: input.notes,
+  };
+}
 
 export async function checkAvailability(facilityId: number, start: string, end: string) {
   const s = new Date(start);
@@ -31,27 +76,62 @@ export async function checkAvailability(facilityId: number, start: string, end: 
   return { ok: true, available: false, blocked: false, blockReason: null, alternatives: alts };
 }
 
-export async function createFacilityRequest(_prev: RequestFormState, formData: FormData): Promise<RequestFormState> {
+export type FacilityScheduleItem = {
+  start: string;
+  end: string;
+  label: string;
+  kind: 'booking' | 'block';
+};
+
+/**
+ * Jadwal terisi (booking aktif + blokir admin) untuk satu fasilitas, jendela
+ * ~7 bulan ke depan. Dipakai DatePicker form untuk menandai tanggal yang sudah dipesan.
+ */
+export async function getFacilitySchedule(facilityId: number): Promise<FacilityScheduleItem[]> {
+  if (!facilityId || Number.isNaN(facilityId)) return [];
+  await verifySession();
+  const now = new Date();
+  const winStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const winEnd = new Date(now.getFullYear(), now.getMonth() + 7, 0, 23, 59, 59);
+
+  const bookings = await query<{ startDateTime: string; endDateTime: string; activityName: string }>(
+    `SELECT startDateTime, endDateTime, activityName FROM facility_requests
+     WHERE facilityId = ?
+       AND status IN ('APPROVED','WAITING_BIRO_III','WAITING_WR3_WD3','WAITING_ADMIN_UNIT','REVISION_REQUESTED','ON_HOLD')
+       AND startDateTime <= ? AND endDateTime >= ?
+     ORDER BY startDateTime ASC`,
+    [facilityId, winEnd, winStart]
+  );
+  const blocks = await query<{ startDateTime: string; endDateTime: string; reason: string }>(
+    `SELECT startDateTime, endDateTime, reason FROM facility_blocks
+     WHERE (facilityId = ? OR facilityId IS NULL)
+       AND startDateTime <= ? AND endDateTime >= ?
+     ORDER BY startDateTime ASC`,
+    [facilityId, winEnd, winStart]
+  );
+
+  return [
+    ...bookings.map((b) => ({
+      start: new Date(b.startDateTime).toISOString(),
+      end: new Date(b.endDateTime).toISOString(),
+      label: b.activityName,
+      kind: 'booking' as const,
+    })),
+    ...blocks.map((b) => ({
+      start: new Date(b.startDateTime).toISOString(),
+      end: new Date(b.endDateTime).toISOString(),
+      label: b.reason,
+      kind: 'block' as const,
+    })),
+  ];
+}
+
+export async function createFacilityRequest(
+  _prev: RequestFormState,
+  input: RequestFormPayload
+): Promise<RequestFormState> {
   const session = await requireRole('PENGURUS');
-  const parsed = FacilityRequestSchema.safeParse({
-    facilityId: formData.get('facilityId'),
-    activityName: formData.get('activityName'),
-    organizationName: formData.get('organizationName'),
-    personInCharge: formData.get('personInCharge'),
-    identityNumber: formData.get('identityNumber'),
-    email: formData.get('email'),
-    phone: formData.get('phone'),
-    startDateTime: formData.get('startDateTime'),
-    endDateTime: formData.get('endDateTime'),
-    participantCount: formData.get('participantCount') || undefined,
-    purpose: formData.get('purpose'),
-    description: formData.get('description'),
-    activityScope: formData.get('activityScope') || 'UNIVERSITAS',
-    activityLevel: formData.get('activityLevel') || 'KEMAHASISWAAN',
-    additionalNeeds: formData.get('additionalNeeds'),
-    attachmentUrl: formData.get('attachmentUrl'),
-    notes: formData.get('notes'),
-  });
+  const parsed = FacilityRequestSchema.safeParse(parseRequestPayload(input));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
   const d = parsed.data;
@@ -117,13 +197,14 @@ export async function createFacilityRequest(_prev: RequestFormState, formData: F
   );
 
   revalidatePath('/dashboard/pengurus');
-  redirect(`/dashboard/pengurus/requests/${result.insertId}`);
+  revalidatePath('/dashboard/pengurus/requests');
+  return { ok: true, requestId: result.insertId };
 }
 
 export async function updateRevisionRequest(
   requestId: number,
   _prev: RequestFormState,
-  formData: FormData
+  input: RequestFormPayload
 ): Promise<RequestFormState> {
   const session = await requireRole('PENGURUS');
   const current = await queryOne<FacilityRequest>(
@@ -133,24 +214,11 @@ export async function updateRevisionRequest(
   if (!current) return { error: 'Pengajuan tidak ditemukan' };
   if (current.status !== 'REVISION_REQUESTED') return { error: 'Hanya bisa diedit saat status REVISION_REQUESTED' };
 
+  const raw = parseRequestPayload(input);
   const parsed = FacilityRequestSchema.safeParse({
-    facilityId: formData.get('facilityId'),
-    activityName: formData.get('activityName'),
-    organizationName: formData.get('organizationName'),
-    personInCharge: formData.get('personInCharge'),
-    identityNumber: formData.get('identityNumber'),
-    email: formData.get('email'),
-    phone: formData.get('phone'),
-    startDateTime: formData.get('startDateTime'),
-    endDateTime: formData.get('endDateTime'),
-    participantCount: formData.get('participantCount') || undefined,
-    purpose: formData.get('purpose'),
-    description: formData.get('description'),
-    activityScope: formData.get('activityScope') || current.activityScope || 'UNIVERSITAS',
-    activityLevel: formData.get('activityLevel') || current.activityLevel || 'KEMAHASISWAAN',
-    additionalNeeds: formData.get('additionalNeeds'),
-    attachmentUrl: formData.get('attachmentUrl'),
-    notes: formData.get('notes'),
+    ...raw,
+    activityScope: raw.activityScope || current.activityScope || 'UNIVERSITAS',
+    activityLevel: raw.activityLevel || current.activityLevel || 'KEMAHASISWAAN',
   });
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
@@ -190,97 +258,53 @@ export async function updateRevisionRequest(
       d.facilityId, d.activityName, d.organizationName, d.personInCharge, d.identityNumber || null,
       d.email, d.phone, toMysqlDateTime(start), toMysqlDateTime(end), d.participantCount ?? null,
       d.purpose, d.description, d.activityScope, d.activityLevel, d.additionalNeeds || null,
-      d.attachmentUrl || null, d.notes || null, 'WAITING_BIRO_III', 'BIRO_III', requestId,
+      d.attachmentUrl || null, d.notes || null, 'WAITING_ADMIN_UNIT', 'ADMIN_UNIT', requestId,
     ]
   );
 
+  // Revisi diminta oleh Admin Unit (terjadi setelah Biro III & WR3/WD3
+  // sudah menyetujui). Maka setelah disubmit ulang, alur langsung kembali
+  // ke Admin Unit — tidak mengulang validasi Biro III & WR3/WD3.
   await execute(
     `INSERT INTO approval_logs (requestId, actorId, action, fromStatus, toStatus, note)
      VALUES (?,?,?,?,?,?)`,
-    [requestId, session.userId, 'RESUBMIT_REVISION', 'REVISION_REQUESTED', 'WAITING_BIRO_III', null]
+    [requestId, session.userId, 'RESUBMIT_REVISION', 'REVISION_REQUESTED', 'WAITING_ADMIN_UNIT', null]
   );
 
-  const facilityForResubmit = await queryOne<{ name: string }>(
-    'SELECT name FROM facilities WHERE id = ?',
+  const facilityForResubmit = await queryOne<{ name: string; managingUnit: string }>(
+    'SELECT name, managingUnit FROM facilities WHERE id = ?',
     [d.facilityId]
   );
   const facLabelResubmit = facilityForResubmit?.name ?? current.activityName;
-  await createNotificationForRole(
-    'BIRO_III',
-    'Revisi pengajuan disubmit ulang',
-    `Peminjaman ${facLabelResubmit} — ${d.activityName} disubmit ulang setelah revisi.`,
-    `/dashboard/biro-iii/requests/${requestId}`
-  );
+  if (facilityForResubmit) {
+    await createNotificationForBureau(
+      facilityForResubmit.managingUnit as 'BIRO_I' | 'BIRO_IV' | 'PPLK' | 'KRT' | 'LPAIP',
+      'Revisi pengajuan disubmit ulang',
+      `Peminjaman ${facLabelResubmit} — ${d.activityName} telah direvisi pengaju dan kembali menunggu persetujuan unit Anda.`,
+      `/dashboard/admin-unit/requests/${requestId}`
+    );
+  }
 
   revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
-  redirect(`/dashboard/pengurus/requests/${requestId}`);
+  revalidatePath('/dashboard/pengurus/requests');
+  return { ok: true, requestId };
 }
 
-const ALLOWED_LETTER_MIME = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'image/webp',
-]);
-const MAX_LETTER_BYTES = 5 * 1024 * 1024;
-
+/** @deprecated Surat otomatis dari sistem setelah WR3/WD3 — upload manual tidak dipakai. */
 export async function uploadSignedLetter(
   requestId: number,
-  formData: FormData
+  _formData: FormData
 ): Promise<{ ok?: boolean; error?: string; url?: string }> {
-  const { promises: fs } = await import('node:fs');
-  const path = await import('node:path');
   const session = await requireRole('PENGURUS');
-  const current = await queryOne<FacilityRequest & { facilityName: string }>(
-    `SELECT fr.*, f.name AS facilityName
-     FROM facility_requests fr JOIN facilities f ON f.id = fr.facilityId
-     WHERE fr.id = ? AND fr.userId = ?`,
+  const current = await queryOne<FacilityRequest>(
+    'SELECT id, status FROM facility_requests WHERE id = ? AND userId = ?',
     [requestId, session.userId]
   );
   if (!current) return { error: 'Pengajuan tidak ditemukan' };
-  if (current.status !== 'WAITING_ADMIN_UNIT') {
-    return { error: 'Upload surat hanya tersedia saat status Menunggu Pengumpulan Surat' };
-  }
-
-  const file = formData.get('letter');
-  if (!(file instanceof File) || file.size === 0) return { error: 'Pilih file surat terlebih dahulu' };
-  if (!ALLOWED_LETTER_MIME.has(file.type)) return { error: 'Format harus PDF / PNG / JPG / WEBP' };
-  if (file.size > MAX_LETTER_BYTES) return { error: 'Ukuran file maksimal 5 MB' };
-
-  const ext =
-    file.type === 'application/pdf'
-      ? 'pdf'
-      : file.type === 'image/png'
-        ? 'png'
-        : file.type === 'image/webp'
-          ? 'webp'
-          : 'jpg';
-
-  const dir = path.join(process.cwd(), 'public', 'uploads', 'letters');
-  await fs.mkdir(dir, { recursive: true });
-  const fileName = `req-${requestId}-${Date.now()}.${ext}`;
-  const buf = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(dir, fileName), buf);
-
-  if (current.signedLetterUrl) {
-    const old = path.join(process.cwd(), 'public', current.signedLetterUrl.replace(/^\//, ''));
-    fs.unlink(old).catch(() => {});
-  }
-
-  const url = `/uploads/letters/${fileName}`;
-  await execute('UPDATE facility_requests SET signedLetterUrl = ? WHERE id = ?', [url, requestId]);
-
-  await createNotificationForRole(
-    'ADMIN_UNIT',
-    'Surat validasi siap ditinjau',
-    `${current.facilityName} — ${current.activityName} (${current.organizationName}) telah mengunggah surat.`,
-    `/dashboard/admin-unit/requests/${requestId}`
-  );
-
-  revalidatePath(`/dashboard/pengurus/requests/${requestId}`);
-  revalidatePath(`/dashboard/admin-unit/requests/${requestId}`);
-  return { ok: true, url };
+  return {
+    error:
+      'Surat otomatis diteruskan ke Admin Unit setelah disetujui WR3/WD3. Tidak perlu upload manual.',
+  };
 }
 
 export async function removeSignedLetter(requestId: number): Promise<void> {
@@ -293,6 +317,7 @@ export async function removeSignedLetter(requestId: number): Promise<void> {
   );
   if (!current) return;
   if (current.status !== 'WAITING_ADMIN_UNIT') return;
+  if (isSystemValidatedSurat(current.signedLetterUrl)) return;
   if (current.signedLetterUrl) {
     const old = path.join(process.cwd(), 'public', current.signedLetterUrl.replace(/^\//, ''));
     fs.unlink(old).catch(() => {});
@@ -354,7 +379,7 @@ export async function getMyRequests() {
     `SELECT fr.*, f.name AS facilityName
      FROM facility_requests fr JOIN facilities f ON f.id = fr.facilityId
      WHERE fr.userId = ?
-     ORDER BY fr.createdAt DESC`,
+     ORDER BY ${REQUEST_LIST_ORDER_SQL}`,
     [session.userId]
   );
 }

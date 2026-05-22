@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { startOfTodayWIB } from '@/utils/date';
 
 const STUDENT_EMAIL_DOMAIN = '@students.ukdw.ac.id';
 
@@ -56,6 +57,14 @@ export const FacilityRequestSchema = z
   })
   .refine((d) => new Date(d.endDateTime) > new Date(d.startDateTime), {
     message: 'Tanggal/jam selesai harus setelah mulai',
+    path: ['endDateTime'],
+  })
+  .refine((d) => new Date(d.startDateTime) >= startOfTodayWIB(), {
+    message: 'Tanggal/jam mulai tidak boleh di masa lalu',
+    path: ['startDateTime'],
+  })
+  .refine((d) => new Date(d.endDateTime) >= startOfTodayWIB(), {
+    message: 'Tanggal/jam selesai tidak boleh di masa lalu',
     path: ['endDateTime'],
   });
 

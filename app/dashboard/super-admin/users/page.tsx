@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
-import { activateUser, deactivateUser, getUsers, updateAdminBureau, updateUserScope } from '@/app/actions/users';
-import { MANAGING_UNIT_LABEL, type ManagingUnit } from '@/types';
+import { activateUser, deactivateUser, getUsers } from '@/app/actions/users';
+import { AdminBureauForm, Wr3ScopeForm } from '@/components/dashboard/StaffUserForms';
+import type { ManagingUnit } from '@/types';
 import { PageHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { fmtDateTime } from '@/lib/request-code';
@@ -21,7 +23,10 @@ export default async function SuperAdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Manajemen User" subtitle={`${users.length} akun terdaftar · ${pending.length} menunggu aktivasi.`} />
+      <PageHeader
+        title="Manajemen User"
+        subtitle={`${users.length} akun terdaftar · ${pending.length} menunggu aktivasi pengurus.`}
+      />
 
       <section className="rounded-xl border border-amber-200 bg-amber-50/40 shadow-sm">
         <div className="border-b border-amber-200 px-6 py-4">
@@ -44,9 +49,6 @@ export default async function SuperAdminUsersPage() {
                 </div>
                 <form action={activateUser.bind(null, u.id)}>
                   <Button type="submit" variant="success" size="sm">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
                     Aktivasi Akun
                   </Button>
                 </form>
@@ -55,6 +57,32 @@ export default async function SuperAdminUsersPage() {
           </ul>
         )}
       </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--primary-200)] bg-[var(--primary-50)]/50 px-5 py-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Akun Validator / Admin Unit</p>
+          <p className="text-xs text-slate-600">
+            Buat akun Biro III, WR3/WD3, atau Admin Unit untuk tiap biro pengelola fasilitas.
+          </p>
+        </div>
+        <Link href="/dashboard/super-admin/users/new">
+          <Button>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Tambah Akun
+          </Button>
+        </Link>
+      </div>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
@@ -68,7 +96,7 @@ export default async function SuperAdminUsersPage() {
                 <th className="px-5 py-3">Nama</th>
                 <th className="px-5 py-3">Email</th>
                 <th className="px-5 py-3">Role</th>
-                <th className="px-5 py-3">Scope</th>
+                <th className="px-5 py-3">Scope / Unit</th>
                 <th className="px-5 py-3">Organisasi</th>
                 <th className="px-5 py-3 text-right">Aksi</th>
               </tr>
@@ -81,45 +109,12 @@ export default async function SuperAdminUsersPage() {
                   <td className="px-5 py-3 text-slate-700">{ROLE_LABEL[u.role] ?? u.role}</td>
                   <td className="px-5 py-3 text-xs text-slate-600">
                     {u.role === 'WR3_WD3' ? (
-                      <form action={async (formData: FormData) => {
-                        'use server';
-                        const v = String(formData.get('scope') ?? '');
-                        if (v === 'UNIVERSITAS' || v === 'FAKULTAS') await updateUserScope(u.id, v);
-                      }}>
-                        <select
-                          name="scope"
-                          defaultValue={u.userScope ?? 'UNIVERSITAS'}
-                          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
-                        >
-                          <option value="UNIVERSITAS">WR3 (Universitas)</option>
-                          <option value="FAKULTAS">WD3 (Fakultas)</option>
-                        </select>
-                        <button type="submit" className="ml-1 text-xs font-medium text-blue-600 hover:text-blue-700">
-                          Simpan
-                        </button>
-                      </form>
+                      <Wr3ScopeForm userId={u.id} initialScope={u.userScope} />
                     ) : u.role === 'ADMIN_UNIT' ? (
-                      <form action={async (formData: FormData) => {
-                        'use server';
-                        const v = String(formData.get('bureau') ?? '') as ManagingUnit;
-                        if (['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'].includes(v))
-                          await updateAdminBureau(u.id, v);
-                      }}>
-                        <select
-                          name="bureau"
-                          defaultValue={u.bureauScope ?? 'BIRO_I'}
-                          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
-                        >
-                          {(['BIRO_I', 'BIRO_IV', 'PPLK', 'KRT', 'LPAIP'] as ManagingUnit[]).map((b) => (
-                            <option key={b} value={b}>
-                              {MANAGING_UNIT_LABEL[b]}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className="ml-1 text-xs font-medium text-blue-600 hover:text-blue-700">
-                          Simpan
-                        </button>
-                      </form>
+                      <AdminBureauForm
+                        userId={u.id}
+                        initialBureau={(u.bureauScope as ManagingUnit | null) ?? null}
+                      />
                     ) : (
                       '-'
                     )}

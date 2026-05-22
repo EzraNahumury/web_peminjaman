@@ -39,7 +39,7 @@ export default async function AdminBlocksPage() {
 
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Form card */}
-        <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-[var(--neutral-200)] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)] lg:col-span-2">
+        <div className="rounded-2xl bg-white ring-1 ring-[var(--neutral-200)] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)] lg:col-span-2">
           <div className="relative border-b border-[var(--neutral-100)] px-6 py-5">
             <div
               aria-hidden
@@ -66,7 +66,7 @@ export default async function AdminBlocksPage() {
               </div>
             </div>
           </div>
-          <div className="p-6">
+          <div className="relative overflow-visible p-6">
             <BlockForm facilities={facilities} canBlockAll={false} />
           </div>
         </div>
